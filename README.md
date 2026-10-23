@@ -267,7 +267,7 @@ systemctl --user enable --now sentinel
 loginctl enable-linger "$USER"     # sigue corriendo al cerrar la sesión SSH
 ```
 
-La aplicación queda en `http://IP-DEL-SERVIDOR:8090`.
+La aplicación queda en `http://IP-DEL-SERVIDOR:8090` (o en `http://sentinel.bello.works` detrás de Nginx, opción B).
 
 ```bash
 systemctl --user status sentinel      # estado
