@@ -1,0 +1,105 @@
+{
+  "version": "v1",
+  "fecha_entrenamiento": "2026-10-22T18:33:08",
+  "algoritmo": "Regresión anclada en promedio_3: Ridge sin intercepto sobre el residuo (app/modelo.py)",
+  "configuracion": {
+    "alpha": 10.0,
+    "intercepto": 0,
+    "coeficientes": {
+      "puntaje_ultimo": 0.2528,
+      "puntaje_anterior": -0.1173,
+      "promedio_3": 0.8302,
+      "puntaje_grupo": 0.0343
+    },
+    "formula": "0.2528·puntaje_ultimo + -0.1173·puntaje_anterior + 0.8302·promedio_3 + 0.0343·puntaje_grupo"
+  },
+  "datos": {
+    "archivo": "entrenamiento.csv",
+    "registros": 53604,
+    "sha256": "c5d4a77d440a6207195df1ab2c3cef231257ee95776bbd088ed03be0996f097c",
+    "anios_objetivo": [
+      2015,
+      2016,
+      2017,
+      2019,
+      2020
+    ],
+    "por_tipo": {
+      "colegio": 48057,
+      "municipio": 5547
+    }
+  },
+  "variables_predictoras": [
+    "puntaje_ultimo",
+    "puntaje_anterior",
+    "promedio_3",
+    "puntaje_grupo"
+  ],
+  "variables_categoricas": [],
+  "variables_auxiliares": [
+    "tipo_unidad",
+    "anios_desde_ultimo",
+    "estudiantes_ultimo"
+  ],
+  "categorias_validas": {
+    "tipo_unidad": [
+      "colegio",
+      "municipio"
+    ]
+  },
+  "objetivo": {
+    "nombre": "puntaje_real",
+    "tipo": "numerico",
+    "min": 0,
+    "max": 500,
+    "unidad": "puntos (escala 0-500)",
+    "descripcion": "Puntaje global promedio de Saber 11 de la unidad en anio_objetivo. Solo se exige en los archivos para actualizar el modelo; en los de predicción debe faltar o estar vacío."
+  },
+  "no_enviar_al_modelo": [
+    "codigo",
+    "nombre",
+    "departamento_cod",
+    "municipio_cod",
+    "anio_objetivo",
+    "anio_ultimo",
+    "puntaje_real"
+  ],
+  "reglas": "shared/config/reglas_dominio.json",
+  "onnx": {
+    "archivo": "modelo.onnx",
+    "entradas": {
+      "puntaje_ultimo": "float32 [n,1]",
+      "puntaje_anterior": "float32 [n,1]",
+      "promedio_3": "float32 [n,1]",
+      "puntaje_grupo": "float32 [n,1]"
+    },
+    "salida": "variable float32 [n,1] (puntaje predicho)",
+    "diferencia_max_vs_sklearn": 4.6e-05
+  },
+  "validacion": {
+    "estrategia": "temporal: entrena con años objetivo < t y predice t, para cada t desde el segundo año",
+    "metrica_principal": "mae_choco (error absoluto medio en puntos, unidades de Chocó, promedio de los años)",
+    "mae_choco": 9.75,
+    "mae_choco_municipios": 9.52,
+    "mae_choco_colegios": 9.81,
+    "mae_pais": 10.21,
+    "lineas_base": {
+      "persistencia_mae_choco": 11.06,
+      "promedio_3_mae_choco": 9.83
+    },
+    "por_anio": "validacion.csv"
+  },
+  "intervalo_80": {
+    "colegio": {
+      "<10": 21.7,
+      "10-29": 15.4,
+      ">=30": 13.3
+    },
+    "municipio": {
+      "<10": 21.9,
+      "10-29": 8.8,
+      ">=30": 16.8
+    }
+  },
+  "notas": "Modelo inicial: entrenado con años objetivo 2015-2020"
+}

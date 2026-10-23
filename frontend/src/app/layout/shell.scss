@@ -1,0 +1,100 @@
+:host {
+  --lateral: 248px;
+  --contexto: 0px;
+  display: grid;
+  grid-template-columns: var(--lateral) minmax(0, 1fr) var(--contexto);
+  grid-template-rows: 64px 1fr;
+  grid-template-areas: 'lateral barra barra' 'lateral main contexto';
+  min-height: 100vh;
+  transition: grid-template-columns var(--sx-med) var(--sx-ease);
+}
+:host(.colapsada) { --lateral: 76px; }
+:host(.con-contexto) { --contexto: 300px; }
+
+.saltar { position: absolute; left: -999px; top: 8px; z-index: 2000; background: var(--sx-accent); color: var(--sx-accent-ink); padding: 8px 12px; border-radius: 8px; }
+.saltar:focus { left: 8px; }
+
+// Fondo aurora: tres manchas de color que se mueven muy despacio
+.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.aurora i { position: absolute; width: 55vw; height: 55vw; border-radius: 50%; filter: blur(80px); animation: deriva 28s ease-in-out infinite alternate; }
+.aurora i:nth-child(1) { background: var(--sx-aurora-1); top: -25vw; left: -10vw; }
+.aurora i:nth-child(2) { background: var(--sx-aurora-2); top: -20vw; right: -20vw; animation-delay: -9s; }
+.aurora i:nth-child(3) { background: var(--sx-aurora-3); bottom: -30vw; left: 30vw; animation-delay: -18s; }
+@keyframes deriva { to { transform: translate(6vw, 4vw) scale(1.12); } }
+
+// --- Barra lateral --------------------------------------------------------------------------------------------------
+.lateral {
+  grid-area: lateral; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 2px;
+  padding: 14px 12px; border-width: 0 1px 0 0; z-index: 20; overflow: hidden auto;
+}
+.marca { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; text-decoration: none; color: inherit; }
+.marca img { flex: none; filter: drop-shadow(0 0 10px rgba(110, 231, 255, 0.35)); }
+.marca b { display: block; letter-spacing: 0.18em; font-size: 15px; }
+.marca small { display: block; color: var(--sx-muted); font-size: 11px; letter-spacing: 0.04em; }
+.grupo { padding: 14px 10px 6px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sx-faint); white-space: nowrap; }
+.item {
+  position: relative; display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px;
+  color: var(--sx-muted); text-decoration: none; font-weight: 500; white-space: nowrap; transition: all var(--sx-fast) var(--sx-ease);
+}
+.item:hover { color: var(--sx-text); background: color-mix(in srgb, var(--sx-text) 5%, transparent); }
+.item.activo { color: var(--sx-text); background: color-mix(in srgb, var(--sx-accent) 12%, transparent); }
+.item.activo::before { content: ''; position: absolute; left: -12px; top: 9px; bottom: 9px; width: 3px; border-radius: 0 3px 3px 0; background: var(--sx-accent); box-shadow: 0 0 12px var(--sx-accent); }
+.item.activo .material-symbols-rounded { color: var(--sx-accent); }
+.badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center;
+         font-size: 11px; font-weight: 700; background: var(--sx-candidate); color: #fff; box-shadow: 0 0 12px color-mix(in srgb, var(--sx-candidate) 60%, transparent); }
+.lema { margin-top: auto; display: flex; gap: 10px; padding: 12px; border-radius: 12px; font-size: 12px; color: var(--sx-muted);
+        background: linear-gradient(135deg, color-mix(in srgb, var(--sx-active) 10%, transparent), color-mix(in srgb, var(--sx-candidate) 10%, transparent));
+        border: 1px solid var(--sx-border); }
+.lema .material-symbols-rounded { color: var(--sx-active); }
+.colapsar { margin-top: 10px; align-self: flex-end; width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--sx-border); background: var(--sx-card); color: var(--sx-muted); cursor: pointer; display: grid; place-items: center; }
+:host(.colapsada) .texto, :host(.colapsada) .grupo { display: none; }
+:host(.colapsada) .item { justify-content: center; padding: 0; }
+:host(.colapsada) .badge { position: absolute; top: 2px; right: 6px; min-width: 16px; height: 16px; font-size: 10px; }
+:host(.colapsada) .lema { justify-content: center; }
+:host(.colapsada) .colapsar { align-self: center; }
+
+// --- Barra superior -------------------------------------------------------------------------------------------------
+.barra { grid-area: barra; position: sticky; top: 0; z-index: 15; display: flex; align-items: center; gap: 16px; padding: 0 20px; border-width: 0 0 1px; }
+.migas { white-space: nowrap; }
+.busqueda { flex: 0 1 420px; margin: 0 auto; display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border-radius: 10px;
+            border: 1px solid var(--sx-border); background: color-mix(in srgb, var(--sx-card) 70%, transparent); color: var(--sx-muted); cursor: pointer; font: inherit; }
+.busqueda:hover { border-color: var(--sx-border-strong); color: var(--sx-text); }
+.busqueda .ph { flex: 1; text-align: left; }
+kbd { font: 11px var(--sx-mono); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--sx-border-strong); }
+.derecha { display: flex; align-items: center; gap: 10px; }
+.api { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--sx-muted); white-space: nowrap; }
+.api.on { color: var(--sx-success); } .api.off { color: var(--sx-danger); }
+.modelo { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 8px; font: 600 12.5px var(--sx-mono);
+          color: var(--sx-active); text-decoration: none; background: color-mix(in srgb, var(--sx-active) 12%, transparent); border: 1px solid color-mix(in srgb, var(--sx-active) 35%, transparent); }
+.modelo .material-symbols-rounded { font-size: 16px; }
+.icono { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--sx-border); background: transparent; color: var(--sx-muted); cursor: pointer; display: grid; place-items: center; }
+.icono:hover { color: var(--sx-text); border-color: var(--sx-border-strong); }
+.progreso { position: absolute; left: 0; right: 0; bottom: -2px; }
+.menu-movil { display: none; }
+
+main { grid-area: main; padding: 28px clamp(16px, 3vw, 40px) 64px; min-width: 0; outline: none; }
+
+// --- Panel contextual -----------------------------------------------------------------------------------------------
+.contexto { grid-area: contexto; position: sticky; top: 64px; height: calc(100vh - 64px); overflow: auto; border-width: 0 0 0 1px;
+            padding: 20px 18px; display: flex; flex-direction: column; gap: 22px; animation: sx-rise var(--sx-med) var(--sx-ease); }
+.contexto section { display: flex; flex-direction: column; gap: 10px; }
+.contexto p { margin: 0; }
+.archivo { display: flex; gap: 10px; align-items: center; } .archivo small { display: block; }
+.archivo .material-symbols-rounded { color: var(--sx-accent); }
+.fila { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.evento { display: flex; gap: 10px; font-size: 12.5px; } .evento .sx-dot { margin-top: 6px; flex: none; color: var(--sx-muted); }
+.evento[data-tono=ok] .sx-dot { color: var(--sx-success); } .evento[data-tono=bad] .sx-dot { color: var(--sx-danger); }
+.evento[data-tono=warn] .sx-dot { color: var(--sx-warning); } .evento[data-tono=candidate] .sx-dot { color: var(--sx-candidate); }
+.evento[data-tono=active] .sx-dot { color: var(--sx-active); }
+
+// --- Responsive -----------------------------------------------------------------------------------------------------
+@media (max-width: 1280px) { :host(.con-contexto) { --contexto: 0px; } .contexto { position: fixed; right: 0; top: 64px; width: 300px; z-index: 30; box-shadow: var(--sx-shadow-lift); } }
+@media (max-width: 900px) {
+  :host, :host(.colapsada) { --lateral: 0px; }
+  .lateral { position: fixed; left: 0; width: 260px; transform: translateX(0); transition: transform var(--sx-med) var(--sx-ease); box-shadow: var(--sx-shadow-lift); }
+  :host(.colapsada) .lateral { transform: translateX(-110%); }
+  :host(.colapsada) .texto, :host(.colapsada) .grupo { display: initial; }
+  .menu-movil { display: inline-flex; padding: 0 10px; }
+  .migas, .busqueda .ph, .api { display: none; }
+  .busqueda { flex: 0 0 auto; margin: 0 0 0 auto; }
+}

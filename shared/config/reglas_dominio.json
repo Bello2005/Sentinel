@@ -1,0 +1,230 @@
+{
+  "_descripcion": "Reglas de dominio del modelo Saber 11. Fuente única para la validación (Crow) y el entrenamiento (Python). Cada fila es una unidad (municipio o colegio) y el año que se quiere predecir; las variables resumen lo que se sabía antes de ese año.",
+  "identificadores": [
+    "codigo",
+    "nombre",
+    "departamento_cod",
+    "municipio_cod",
+    "anio_objetivo",
+    "anio_ultimo"
+  ],
+  "objetivo": {
+    "nombre": "puntaje_real",
+    "tipo": "numerico",
+    "min": 0,
+    "max": 500,
+    "unidad": "puntos (escala 0-500)",
+    "descripcion": "Puntaje global promedio de Saber 11 de la unidad en anio_objetivo. Solo se exige en los archivos para actualizar el modelo; en los de predicción debe faltar o estar vacío."
+  },
+  "variables": [
+    {
+      "nombre": "codigo",
+      "rol": "identificador",
+      "tipo": "texto",
+      "admite_nulos": false,
+      "patron": "^[0-9]{5}$|^[0-9]{12}$",
+      "descripcion": "Código DANE: 5 dígitos (municipio) o 12 (colegio)"
+    },
+    {
+      "nombre": "nombre",
+      "rol": "identificador",
+      "tipo": "texto",
+      "admite_nulos": true
+    },
+    {
+      "nombre": "departamento_cod",
+      "rol": "identificador",
+      "tipo": "texto",
+      "admite_nulos": false,
+      "patron": "^[0-9]{2}$"
+    },
+    {
+      "nombre": "municipio_cod",
+      "rol": "identificador",
+      "tipo": "texto",
+      "admite_nulos": false,
+      "patron": "^[0-9]{5}$"
+    },
+    {
+      "nombre": "anio_objetivo",
+      "rol": "identificador",
+      "tipo": "entero",
+      "admite_nulos": false,
+      "min": 2015,
+      "max": 2040,
+      "descripcion": "Año que se predice"
+    },
+    {
+      "nombre": "anio_ultimo",
+      "rol": "identificador",
+      "tipo": "entero",
+      "admite_nulos": false,
+      "min": 2014,
+      "max": 2039,
+      "descripcion": "Último año con datos de la unidad"
+    },
+    {
+      "nombre": "puntaje_ultimo",
+      "rol": "predictora",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 500,
+      "unidad": "puntos"
+    },
+    {
+      "nombre": "puntaje_anterior",
+      "rol": "predictora",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 500,
+      "unidad": "puntos",
+      "descripcion": "Penúltimo año con datos (si solo hay uno, igual a puntaje_ultimo)"
+    },
+    {
+      "nombre": "promedio_3",
+      "rol": "predictora",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 500,
+      "unidad": "puntos",
+      "descripcion": "Promedio de los últimos 3 años con datos"
+    },
+    {
+      "nombre": "puntaje_grupo",
+      "rol": "predictora",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 500,
+      "unidad": "puntos",
+      "descripcion": "Promedio del departamento (municipios) o del municipio (colegios) en anio_ultimo"
+    },
+    {
+      "nombre": "tipo_unidad",
+      "rol": "auxiliar",
+      "tipo": "categorica",
+      "admite_nulos": false,
+      "desconocidas": "rechazar",
+      "descripcion": "municipio o colegio"
+    },
+    {
+      "nombre": "anios_desde_ultimo",
+      "rol": "auxiliar",
+      "tipo": "entero",
+      "admite_nulos": false,
+      "min": 1,
+      "max": 4,
+      "unidad": "años",
+      "descripcion": "anio_objetivo - anio_ultimo"
+    },
+    {
+      "nombre": "estudiantes_ultimo",
+      "rol": "auxiliar",
+      "tipo": "entero",
+      "admite_nulos": false,
+      "min": 1,
+      "max": 200000,
+      "unidad": "estudiantes"
+    },
+    {
+      "nombre": "pct_internet",
+      "rol": "informativa",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 1,
+      "unidad": "proporción",
+      "obligatoria": false
+    },
+    {
+      "nombre": "pct_madre_superior",
+      "rol": "informativa",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 1,
+      "unidad": "proporción",
+      "descripcion": "Madre con educación técnica, tecnológica, profesional o posgrado",
+      "obligatoria": false
+    },
+    {
+      "nombre": "pct_extraedad",
+      "rol": "informativa",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 1,
+      "unidad": "proporción",
+      "descripcion": "Estudiantes de 19 años o más",
+      "obligatoria": false
+    },
+    {
+      "nombre": "pct_rural",
+      "rol": "informativa",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 1,
+      "unidad": "proporción",
+      "obligatoria": false
+    },
+    {
+      "nombre": "pct_oficial",
+      "rol": "informativa",
+      "tipo": "numerico",
+      "admite_nulos": false,
+      "min": 0,
+      "max": 1,
+      "unidad": "proporción",
+      "obligatoria": false
+    }
+  ],
+  "reglas_cruzadas": [
+    {
+      "id": "gap_consistente",
+      "regla": "anios_desde_ultimo == anio_objetivo - anio_ultimo",
+      "nivel": "error"
+    },
+    {
+      "id": "codigo_segun_tipo",
+      "regla": "len(codigo) == 5 si tipo_unidad == municipio; 12 si colegio",
+      "nivel": "error"
+    },
+    {
+      "id": "sin_duplicados",
+      "regla": "(tipo_unidad, codigo, anio_objetivo) no se repite",
+      "nivel": "error"
+    },
+    {
+      "id": "pocos_estudiantes",
+      "regla": "estudiantes_ultimo < 10",
+      "nivel": "advertencia",
+      "mensaje": "Promedio con pocos estudiantes: la predicción es menos precisa (intervalo más ancho)"
+    },
+    {
+      "id": "objetivo_en_prediccion",
+      "regla": "puntaje_real presente en un archivo de predicción",
+      "nivel": "advertencia",
+      "mensaje": "La columna puntaje_real no se usa para predecir; se ignora"
+    }
+  ],
+  "estados": {
+    "compatible": "Tiene todas las variables requeridas y todas las filas cumplen las reglas.",
+    "compatible_con_advertencias": "Se puede procesar, pero hay columnas adicionales o advertencias que el usuario debe conocer.",
+    "incompatible": "Hay al menos un error (columna faltante, tipo incorrecto, nulo no admitido, valor fuera de rango, categoría no vista o regla cruzada incumplida). No se generan predicciones."
+  },
+  "_notas": {
+    "desconocidas": "rechazar = una categoría no vista en el entrenamiento hace el archivo incompatible. Las categorías válidas se aprenden del entrenamiento y quedan en metadata.json de cada versión.",
+    "nulos": "Ninguna predictora admite nulos: el sistema no los rellena. Si faltan, el archivo es incompatible y el reporte dice qué filas corregir.",
+    "filas": "Los errores se reportan por variable con la cantidad y la lista de filas afectadas (número de fila del CSV, contando desde 2)."
+  },
+  "_roles": {
+    "identificador": "Obligatoria. Identifica la fila en los resultados; nunca entra al modelo.",
+    "predictora": "Obligatoria. Entra al modelo, en este orden (el mismo de metadata.json y de las entradas ONNX).",
+    "auxiliar": "Obligatoria. No entra al modelo, pero se valida y se usa: tipo_unidad y estudiantes_ultimo eligen el ancho del intervalo; anios_desde_ultimo se cruza con los años.",
+    "informativa": "Opcional (obligatoria: false). Si viene, se valida su rango y se usa en el EDA; si falta, no es error."
+  }
+}

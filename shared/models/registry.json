@@ -1,0 +1,33 @@
+{
+  "activo": "v1",
+  "versiones": [
+    {
+      "id": "v1",
+      "fecha": "2026-10-22T18:33:08",
+      "registros": 53604,
+      "variables": [
+        "puntaje_ultimo",
+        "puntaje_anterior",
+        "promedio_3",
+        "puntaje_grupo"
+      ],
+      "algoritmo": "Regresión anclada en promedio_3: Ridge sin intercepto sobre el residuo (app/modelo.py)",
+      "metricas": {
+        "estrategia": "temporal: entrena con años objetivo < t y predice t, para cada t desde el segundo año",
+        "metrica_principal": "mae_choco (error absoluto medio en puntos, unidades de Chocó, promedio de los años)",
+        "mae_choco": 9.75,
+        "mae_choco_municipios": 9.52,
+        "mae_choco_colegios": 9.81,
+        "mae_pais": 10.21,
+        "lineas_base": {
+          "persistencia_mae_choco": 11.06,
+          "promedio_3_mae_choco": 9.83
+        },
+        "por_anio": "validacion.csv"
+      },
+      "ruta": "models/v1/",
+      "estado": "activo",
+      "datos": "data/entrenamiento.csv"
+    }
+  ]
+}

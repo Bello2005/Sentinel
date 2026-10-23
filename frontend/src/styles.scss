@@ -1,0 +1,183 @@
+// SENTINEL — sistema de diseño
+// Tokens en CSS custom properties (--sx-*): una sola fuente para componentes, gráficas (leen los tokens en tiempo de
+// ejecución) y el tema de Angular Material 3. Modo oscuro por defecto; html.light activa el modo claro.
+@use '@angular/material' as mat;
+
+html {
+  color-scheme: dark;
+  @include mat.theme((
+    color: (primary: mat.$cyan-palette, tertiary: mat.$violet-palette, theme-type: color-scheme),
+    typography: (plain-family: 'Inter', brand-family: 'Inter'),
+    density: 0,
+  ));
+
+  // --- Color ----------------------------------------------------------------------------------------------------
+  --sx-bg: #0b1020;
+  --sx-panel: #12192b;
+  --sx-card: #1a233a;
+  --sx-card-hover: #1f2a45;
+  --sx-border: rgba(148, 163, 184, 0.14);
+  --sx-border-strong: rgba(148, 163, 184, 0.28);
+  --sx-text: #e6ebf5;
+  --sx-muted: #94a3b8;
+  --sx-faint: #64748b;
+  --sx-accent: #6ee7ff;
+  --sx-accent-ink: #04212b;
+  --sx-success: #22c55e;
+  --sx-warning: #f59e0b;
+  --sx-danger: #ef4444;
+  --sx-candidate: #8b5cf6;
+  --sx-active: #06b6d4;
+  --sx-history: #64748b;
+  --sx-glass: rgba(18, 25, 43, 0.72);
+  --sx-aurora-1: rgba(110, 231, 255, 0.10);
+  --sx-aurora-2: rgba(139, 92, 246, 0.12);
+  --sx-aurora-3: rgba(6, 182, 212, 0.08);
+
+  // --- Forma, profundidad y movimiento --------------------------------------------------------------------------
+  --sx-radius-sm: 8px;
+  --sx-radius: 14px;
+  --sx-radius-lg: 20px;
+  --sx-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.28);
+  --sx-shadow-lift: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 18px 40px rgba(0, 0, 0, 0.38);
+  --sx-glow: 0 0 0 1px rgba(110, 231, 255, 0.35), 0 0 24px rgba(110, 231, 255, 0.18);
+  --sx-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --sx-fast: 140ms;
+  --sx-med: 260ms;
+  --sx-slow: 520ms;
+  --sx-font: 'Inter', system-ui, sans-serif;
+  --sx-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html.light {
+  color-scheme: light;
+  --sx-bg: #f5f7fb;
+  --sx-panel: #ffffff;
+  --sx-card: #ffffff;
+  --sx-card-hover: #f8fafc;
+  --sx-border: rgba(15, 23, 42, 0.08);
+  --sx-border-strong: rgba(15, 23, 42, 0.16);
+  --sx-text: #0f172a;
+  --sx-muted: #475569;
+  --sx-faint: #64748b;
+  --sx-accent: #0891b2;
+  --sx-accent-ink: #ffffff;
+  --sx-success: #15803d;
+  --sx-warning: #b45309;
+  --sx-danger: #dc2626;
+  --sx-candidate: #7c3aed;
+  --sx-active: #0e7490;
+  --sx-glass: rgba(255, 255, 255, 0.78);
+  --sx-aurora-1: rgba(8, 145, 178, 0.08);
+  --sx-aurora-2: rgba(124, 58, 237, 0.07);
+  --sx-aurora-3: rgba(14, 116, 144, 0.05);
+  --sx-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --sx-shadow-lift: 0 2px 4px rgba(15, 23, 42, 0.06), 0 18px 40px rgba(15, 23, 42, 0.10);
+  --sx-glow: 0 0 0 1px rgba(8, 145, 178, 0.35), 0 0 20px rgba(8, 145, 178, 0.12);
+}
+
+// --- Base ---------------------------------------------------------------------------------------------------------
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--sx-bg);
+  color: var(--sx-text);
+  font: 14px/1.5 var(--sx-font);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--sx-med) var(--sx-ease), color var(--sx-med) var(--sx-ease);
+}
+h1, h2, h3, h4 { margin: 0; letter-spacing: -0.02em; font-weight: 650; }
+code, .mono { font-family: var(--sx-mono); font-size: 0.92em; }
+a { color: var(--sx-accent); }
+:focus-visible { outline: 2px solid var(--sx-accent); outline-offset: 2px; border-radius: 6px; }
+::selection { background: color-mix(in srgb, var(--sx-accent) 35%, transparent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+// --- Superficies --------------------------------------------------------------------------------------------------
+.sx-card {
+  background: var(--sx-card);
+  border: 1px solid var(--sx-border);
+  border-radius: var(--sx-radius);
+  box-shadow: var(--sx-shadow);
+  padding: 20px;
+  min-width: 0;
+  transition: transform var(--sx-med) var(--sx-ease), box-shadow var(--sx-med) var(--sx-ease), border-color var(--sx-med);
+}
+.sx-card.interactive:hover { transform: translateY(-2px); box-shadow: var(--sx-shadow-lift); border-color: var(--sx-border-strong); }
+.sx-glass { background: var(--sx-glass); backdrop-filter: blur(16px) saturate(140%); border: 1px solid var(--sx-border); }
+.sx-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sx-muted); }
+.sx-muted { color: var(--sx-muted); }
+.sx-grid { display: grid; gap: 16px; }
+.sx-page { display: flex; flex-direction: column; gap: 20px; animation: sx-rise var(--sx-slow) var(--sx-ease) both; }
+.sx-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.sx-page-head p { margin: 4px 0 0; color: var(--sx-muted); max-width: 720px; }
+
+// Borde animado (candidata, acciones críticas)
+.sx-animated-border { position: relative; isolation: isolate; }
+.sx-animated-border::before {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; z-index: -1;
+  background: conic-gradient(from var(--sx-angle, 0deg), var(--sx-candidate), var(--sx-accent), var(--sx-active), var(--sx-candidate));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: sx-spin 6s linear infinite;
+}
+@property --sx-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
+// Botones propios (los de Material se usan en diálogos y menús)
+.sx-btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 10px;
+  border: 1px solid var(--sx-border-strong); background: var(--sx-card); color: var(--sx-text);
+  font: 600 13px var(--sx-font); cursor: pointer; transition: all var(--sx-fast) var(--sx-ease); text-decoration: none;
+}
+.sx-btn:hover:not(:disabled) { border-color: var(--sx-accent); box-shadow: var(--sx-glow); }
+.sx-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.sx-btn.primary { background: var(--sx-accent); color: var(--sx-accent-ink); border-color: transparent; }
+.sx-btn.success { background: var(--sx-success); color: #fff; border-color: transparent; }
+.sx-btn.danger { background: transparent; color: var(--sx-danger); border-color: color-mix(in srgb, var(--sx-danger) 50%, transparent); }
+.sx-btn.lg { height: 46px; padding: 0 22px; font-size: 14px; border-radius: 12px; }
+.sx-btn .material-symbols-rounded { font-size: 18px; }
+
+.sx-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: color-mix(in srgb, currentColor 14%, transparent); border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+.sx-pill.ok { color: var(--sx-success); } .sx-pill.warn { color: var(--sx-warning); } .sx-pill.bad { color: var(--sx-danger); }
+.sx-pill.active { color: var(--sx-active); } .sx-pill.candidate { color: var(--sx-candidate); } .sx-pill.history { color: var(--sx-muted); }
+.sx-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 20%, transparent); }
+.sx-dot.pulse { animation: sx-pulse 2s var(--sx-ease) infinite; }
+
+.material-symbols-rounded { font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 24; user-select: none; }
+
+// Skeleton
+.sx-skeleton {
+  border-radius: 8px; min-height: 14px;
+  background: linear-gradient(90deg, var(--sx-card) 25%, var(--sx-card-hover) 50%, var(--sx-card) 75%);
+  background-size: 200% 100%; animation: sx-shimmer 1.4s infinite;
+}
+
+// --- Movimiento ---------------------------------------------------------------------------------------------------
+@keyframes sx-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sx-spin { to { --sx-angle: 360deg; } }
+@keyframes sx-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 40%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes sx-shimmer { to { background-position: -200% 0; } }
+@keyframes sx-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+.sx-stagger > * { animation: sx-rise var(--sx-slow) var(--sx-ease) both; }
+@for $i from 1 through 12 { .sx-stagger > *:nth-child(#{$i}) { animation-delay: #{$i * 45}ms; } }
+
+// Transición del cambio de tema (View Transitions API, solo con la pestaña visible)
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+
+// ApexCharts: tooltips con los tokens
+.apexcharts-tooltip { background: var(--sx-panel) !important; border: 1px solid var(--sx-border-strong) !important; color: var(--sx-text) !important; box-shadow: var(--sx-shadow-lift) !important; }
+.apexcharts-tooltip-title { background: var(--sx-card) !important; border-color: var(--sx-border) !important; }
+.apexcharts-xaxistooltip, .apexcharts-yaxistooltip { background: var(--sx-panel) !important; color: var(--sx-text) !important; border-color: var(--sx-border-strong) !important; }
+
+// Avisos (MatSnackBar)
+.mat-mdc-snack-bar-container.sx-snack-ok .mdc-snackbar__surface { background: var(--sx-panel) !important; border: 1px solid color-mix(in srgb, var(--sx-success) 50%, transparent); }
+.mat-mdc-snack-bar-container.sx-snack-bad .mdc-snackbar__surface { background: var(--sx-panel) !important; border: 1px solid color-mix(in srgb, var(--sx-danger) 60%, transparent); }
+.mat-mdc-snack-bar-container .mat-mdc-snack-bar-label { color: var(--sx-text) !important; }
+.mat-mdc-snack-bar-container .mat-mdc-button { color: var(--sx-accent) !important; }

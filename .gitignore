@@ -1,0 +1,22 @@
+# Dependencias descargadas (ver README: se bajan con el script de entorno)
+vendor/
+# Compilación de Crow
+crow-service/build/
+# Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+# Python
+__pycache__/
+*.pyc
+# Reportes generados en tiempo de ejecución
+ml-service/reportes/
+
+# Reportes generados por la API
+shared/reportes/
+# Lotes subidos y conjuntos de cada versión candidata (se generan al usar el sistema)
+shared/data/lotes/
+shared/data/versiones/
+
+# Sistema operativo
+.DS_Store

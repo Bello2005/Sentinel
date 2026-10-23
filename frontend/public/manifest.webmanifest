@@ -1,0 +1,14 @@
+{
+  "name": "SENTINEL · Predictive Governance Platform",
+  "short_name": "SENTINEL",
+  "description": "Gobierno de modelos predictivos con aprobación humana obligatoria.",
+  "lang": "es",
+  "display": "standalone",
+  "scope": "./",
+  "start_url": "./",
+  "background_color": "#0B1020",
+  "theme_color": "#0B1020",
+  "icons": [
+    { "src": "sentinel.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
