@@ -1,0 +1,4 @@
+# Permite que la renovación automática del certificado (acme.sh, usuario bello) recargue Nginx sin contraseña.
+# Solo autoriza este comando exacto. Instalación (valida la sintaxis antes de activarlo):
+#   sudo visudo -cf deploy/sudoers/sentinel-nginx && sudo install -m 440 deploy/sudoers/sentinel-nginx /etc/sudoers.d/sentinel-nginx
+bello ALL=(root) NOPASSWD: /usr/bin/systemctl reload nginx

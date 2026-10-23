@@ -113,7 +113,7 @@ flowchart TB
 | Backend | C++17, Crow 1.2.1, Asio 1.30.2, nlohmann/json 3.11.3, rapidcsv 8.84, CMake |
 | Inferencia | ONNX Runtime 1.22 (C++) |
 | Entrenamiento | Python 3.12+, scikit-learn 1.9.1, skl2onnx 1.20, onnxruntime 1.31, pandas, numpy, DuckDB (preparación de datos) |
-| Despliegue | Script de instalación sin sudo, systemd (usuario o sistema), Nginx |
+| Despliegue | Script de instalación sin sudo, systemd (usuario o sistema), Nginx, HTTPS con Let's Encrypt (acme.sh, DNS) |
 
 ## Estructura del repositorio
 
@@ -290,6 +290,48 @@ sudo certbot --nginx -d su-dominio.com    # HTTPS con Let's Encrypt
 
 El servicio de sistema escucha solo en `127.0.0.1` y tiene endurecimiento de systemd: solo puede escribir en
 `shared/`. Nginx publica la aplicación, comprime las respuestas y admite archivos de hasta 50 MB.
+
+### HTTPS con Let's Encrypt (verificación por DNS)
+
+`sentinel.bello.works` apunta a una IP privada, así que Let's Encrypt no puede verificarlo por HTTP. Se usa la
+**verificación por DNS** con [acme.sh](https://github.com/acmesh-official/acme.sh) y la API de Name.com: el
+certificado es válido para cualquier navegador y se renueva solo, sin exponer el servidor a internet.
+
+**1. Token de Name.com** (una vez): en <https://www.name.com/account/settings/api> cree un token de producción.
+
+**2. Emitir el certificado** (en el servidor, sin sudo; escriba su usuario y token):
+
+```bash
+export Namecom_Username="SU_USUARIO_NAMECOM"
+export Namecom_Token="SU_TOKEN"
+~/.acme.sh/acme.sh --issue --dns dns_namecom -d sentinel.bello.works
+unset Namecom_Token
+```
+
+acme.sh guarda las credenciales en `~/.acme.sh/account.conf` (solo legible por el usuario) para las renovaciones.
+
+**3. Instalar el certificado donde lo lee Nginx** (la recarga automática necesita la regla del paso 4):
+
+```bash
+~/.acme.sh/acme.sh --install-cert -d sentinel.bello.works \
+  --fullchain-file ~/certs/sentinel.bello.works.crt \
+  --key-file ~/certs/sentinel.bello.works.key \
+  --reloadcmd "sudo /usr/bin/systemctl reload nginx"
+```
+
+**4. Activar HTTPS en Nginx** (con sudo):
+
+```bash
+cd ~/sentinel
+sudo visudo -cf deploy/sudoers/sentinel-nginx && sudo install -m 440 deploy/sudoers/sentinel-nginx /etc/sudoers.d/sentinel-nginx
+sudo cp deploy/nginx/sentinel-https.conf /etc/nginx/sites-available/sentinel
+sudo ufw allow 443/tcp
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+La regla de `sudoers` solo permite `systemctl reload nginx`, para que la renovación (cron de acme.sh, cada 60 días)
+recargue Nginx sin contraseña. `http://sentinel.bello.works` redirige a HTTPS; el nombre nip.io sigue por HTTP.
+Con HTTPS, el *service worker* queda activo y la aplicación se puede instalar como PWA.
 
 ### Actualizar un despliegue
 
