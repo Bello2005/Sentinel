@@ -1,0 +1,26 @@
+# Servicio de sistema (requiere sudo). Escucha solo en 127.0.0.1: Nginx publica la aplicación.
+#   sudo cp deploy/systemd/sentinel.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now sentinel
+[Unit]
+Description=SENTINEL · Predictive Governance Platform (Crow + ONNX Runtime + Angular)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=bello
+Group=bello
+WorkingDirectory=/home/bello/sentinel
+Environment=PUERTO=8090
+Environment=SABER_HOST=127.0.0.1
+ExecStart=/home/bello/sentinel/scripts/iniciar.sh
+Restart=on-failure
+RestartSec=3
+# Endurecimiento: solo puede escribir en shared/ (modelos, reportes, lotes)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/bello/sentinel/shared
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

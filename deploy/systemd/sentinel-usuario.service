@@ -1,0 +1,19 @@
+# Servicio de usuario (no necesita sudo). Instalación:
+#   mkdir -p ~/.config/systemd/user && cp deploy/systemd/sentinel-usuario.service ~/.config/systemd/user/sentinel.service
+#   (ajuste WorkingDirectory si el repositorio no está en ~/sentinel)
+#   systemctl --user daemon-reload && systemctl --user enable --now sentinel
+#   loginctl enable-linger "$USER"     # para que siga corriendo al cerrar la sesión SSH
+[Unit]
+Description=SENTINEL · Predictive Governance Platform (Crow + ONNX Runtime + Angular)
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/sentinel
+Environment=PUERTO=8090
+Environment=SABER_HOST=0.0.0.0
+ExecStart=%h/sentinel/scripts/iniciar.sh
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

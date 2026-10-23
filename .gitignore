@@ -20,3 +20,5 @@ shared/data/versiones/
 
 # Sistema operativo
 .DS_Store
+# Entorno de Python del repositorio
+.venv/

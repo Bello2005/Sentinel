@@ -1,7 +1,9 @@
 // Backend Crow: API REST, validación y coordinación. Inferencia con ONNX Runtime sobre el modelo activo.
 //
-// Uso: saber11_api [--shared RUTA] [--puerto N] [--python RUTA] [--ml-service RUTA]
-//      (por defecto ../shared, 8080, python3 y ../ml-service; también SABER_SHARED, PUERTO, SABER_PYTHON, SABER_ML)
+// Uso: saber11_api [--shared RUTA] [--puerto N] [--python RUTA] [--ml-service RUTA] [--web RUTA] [--host IP]
+//      (por defecto ../shared, 8080, python3 y ../ml-service; también SABER_SHARED, PUERTO, SABER_PYTHON, SABER_ML,
+//       SABER_WEB y SABER_HOST). Con --web, Crow sirve además la interfaz Angular compilada (dist/frontend/browser)
+//       y cualquier ruta que no sea /api devuelve index.html (navegación de una SPA). --host por defecto 0.0.0.0.
 //
 // Endpoints:
 //   GET  /api/salud                         el servicio está vivo
@@ -132,12 +134,16 @@ int main(int argc, char** argv) {
     int puerto = std::getenv("PUERTO") ? std::atoi(std::getenv("PUERTO")) : 8080;
     std::string python = std::getenv("SABER_PYTHON") ? std::getenv("SABER_PYTHON") : "python3";
     std::string ml = std::getenv("SABER_ML") ? std::getenv("SABER_ML") : "../ml-service";
+    std::string web = std::getenv("SABER_WEB") ? std::getenv("SABER_WEB") : "";
+    std::string host = std::getenv("SABER_HOST") ? std::getenv("SABER_HOST") : "0.0.0.0";
     for (int i = 1; i + 1 < argc; i += 2) {
         std::string a = argv[i];
         if (a == "--shared") shared = argv[i + 1];
         else if (a == "--puerto") puerto = std::atoi(argv[i + 1]);
         else if (a == "--python") python = argv[i + 1];
         else if (a == "--ml-service") ml = argv[i + 1];
+        else if (a == "--web") web = argv[i + 1];
+        else if (a == "--host") host = argv[i + 1];
     }
     Contexto ctx{fs::absolute(shared), GestorModelo(fs::absolute(shared)),
                  Entrenamiento(python.find('/') == std::string::npos ? fs::path(python) : fs::absolute(python), fs::absolute(ml))};
@@ -301,6 +307,41 @@ int main(int argc, char** argv) {
         return r;
     });
 
-    CROW_LOG_INFO << "shared: " << ctx.shared << "  puerto: " << puerto;
-    app.port(puerto).multithreaded().run();
+    // Interfaz web (opcional): archivos estáticos de Angular con respaldo a index.html
+    if (!web.empty()) {
+        const fs::path raiz = fs::weakly_canonical(fs::absolute(web));
+        if (!fs::exists(raiz / "index.html")) {
+            CROW_LOG_ERROR << "--web " << raiz << " no tiene index.html (¿compiló el frontend?)";
+            return 1;
+        }
+        // Rutas normales "/" y "/<path>" (no el comodín de Crow, que es el manejador de 404 y descarta el cuerpo).
+        // Las rutas de /api son más específicas y tienen prioridad.
+        auto servir = [raiz](const std::string& ruta) {
+            static const std::map<std::string, std::string> mime = {
+                {".html", "text/html; charset=utf-8"}, {".js", "text/javascript"}, {".css", "text/css"},
+                {".json", "application/json"}, {".webmanifest", "application/manifest+json"}, {".svg", "image/svg+xml"},
+                {".ico", "image/x-icon"}, {".png", "image/png"}, {".woff2", "font/woff2"}, {".csv", "text/csv; charset=utf-8"},
+                {".txt", "text/plain; charset=utf-8"}};
+            if (ruta.rfind("api/", 0) == 0 || ruta == "api") return error_resp(404, "Ruta de la API no encontrada.");
+            // Ruta pedida dentro de la carpeta web; cualquier intento de salir de ella (..) sirve index.html
+            fs::path archivo = fs::weakly_canonical(raiz / ruta);
+            const bool dentro = archivo.string().rfind(raiz.string() + "/", 0) == 0;
+            if (!dentro || !fs::is_regular_file(archivo)) archivo = raiz / "index.html";
+            std::ifstream f(archivo, std::ios::binary);
+            crow::response r(200, std::string(std::istreambuf_iterator<char>(f), {}));
+            auto m = mime.find(archivo.extension().string());
+            r.set_header("Content-Type", m != mime.end() ? m->second : "application/octet-stream");
+            // Los archivos con hash en el nombre no cambian nunca; index.html y el service worker, siempre frescos
+            const std::string nombre = archivo.filename().string();
+            const bool inmutable = nombre.find('-') != std::string::npos && (archivo.extension() == ".js" || archivo.extension() == ".css");
+            r.set_header("Cache-Control", inmutable ? "public, max-age=31536000, immutable" : "no-cache");
+            return r;
+        };
+        CROW_ROUTE(app, "/")([servir] { return servir(""); });
+        CROW_ROUTE(app, "/<path>")([servir](const std::string& ruta) { return servir(ruta); });
+        CROW_LOG_INFO << "web: " << raiz;
+    }
+
+    CROW_LOG_INFO << "shared: " << ctx.shared << "  " << host << ":" << puerto;
+    app.bindaddr(host).port(puerto).multithreaded().run();
 }
