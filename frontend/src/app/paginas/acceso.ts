@@ -146,11 +146,10 @@ import { Tema } from '../core/tema';
   styles: `
     :host { display: block; min-height: 100vh; position: relative; overflow: hidden; }
     .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-    .aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(90px); animation: deriva 26s ease-in-out infinite alternate; }
-    .aurora i:nth-child(1) { background: var(--sx-aurora-1); top: -30vw; left: -15vw; }
-    .aurora i:nth-child(2) { background: var(--sx-aurora-2); bottom: -30vw; left: 20vw; animation-delay: -8s; }
-    .aurora i:nth-child(3) { background: var(--sx-aurora-3); top: -10vw; right: -25vw; animation-delay: -16s; }
-    @keyframes deriva { to { transform: translate(5vw, 4vw) scale(1.1); } }
+    .aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; }
+    .aurora i:nth-child(1) { background: radial-gradient(closest-side, var(--sx-aurora-1) 35%, transparent); top: -30vw; left: -15vw; }
+    .aurora i:nth-child(2) { background: radial-gradient(closest-side, var(--sx-aurora-2) 35%, transparent); bottom: -30vw; left: 20vw; }
+    .aurora i:nth-child(3) { background: radial-gradient(closest-side, var(--sx-aurora-3) 35%, transparent); top: -10vw; right: -25vw; }
     .marco { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
     .historia { display: flex; flex-direction: column; padding: 36px 48px; border-right: 1px solid var(--sx-border);
                 background: linear-gradient(160deg, color-mix(in srgb, var(--sx-panel) 70%, transparent), transparent); }

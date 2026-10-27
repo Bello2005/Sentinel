@@ -6,9 +6,9 @@
   .saltar { position: absolute; left: -999px; top: 8px; z-index: 2000; background: var(--sx-accent); color: var(--sx-accent-ink); padding: 8px 12px; border-radius: 8px; }
   .saltar:focus { left: 8px; }
   .art-aurora { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-  .art-aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(110px); animation: art-deriva 30s ease-in-out infinite alternate; }
-  .art-aurora i:nth-child(1) { background: var(--sx-aurora-1); top: -30vw; left: -20vw; }
-  .art-aurora i:nth-child(2) { background: var(--sx-aurora-2); top: 20vw; right: -30vw; animation-delay: -12s; }
+  .art-aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; }
+  .art-aurora i:nth-child(1) { background: radial-gradient(closest-side, var(--sx-aurora-1) 35%, transparent); top: -30vw; left: -20vw; }
+  .art-aurora i:nth-child(2) { background: radial-gradient(closest-side, var(--sx-aurora-2) 35%, transparent); top: 20vw; right: -30vw; }
   .art-barra { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 70; transform-origin: left; transform: scaleX(0);
     background: linear-gradient(90deg, var(--sx-accent), var(--sx-candidate)); }
 
@@ -140,6 +140,4 @@
     .art-nav { grid-template-columns: 1fr; }
     .art-nav .previo { order: 2; }
   }
-  @media (prefers-reduced-motion: reduce) { .art-aurora i { animation: none; } }
 }
-@keyframes art-deriva { to { transform: translate(6vw, 5vw) scale(1.12); } }

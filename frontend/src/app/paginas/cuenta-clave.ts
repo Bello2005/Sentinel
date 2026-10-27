@@ -51,8 +51,8 @@ import { Sesion } from '../core/sesion';
   styles: `
     :host { display: block; min-height: 100vh; position: relative; overflow: hidden; }
     .aurora { position: fixed; inset: 0; pointer-events: none; }
-    .aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; filter: blur(90px); }
-    .aurora i:nth-child(1) { background: var(--sx-aurora-1); top: -30vw; left: -15vw; } .aurora i:nth-child(2) { background: var(--sx-aurora-2); bottom: -30vw; right: -10vw; }
+    .aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; }
+    .aurora i:nth-child(1) { background: radial-gradient(closest-side, var(--sx-aurora-1) 35%, transparent); top: -30vw; left: -15vw; } .aurora i:nth-child(2) { background: radial-gradient(closest-side, var(--sx-aurora-2) 35%, transparent); bottom: -30vw; right: -10vw; }
     .centro { position: relative; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
     .tarjeta { width: min(440px, 100%); display: flex; flex-direction: column; gap: 16px; padding: 34px; border-radius: var(--sx-radius-lg);
       background: var(--sx-glass); backdrop-filter: blur(18px); border: 1px solid var(--sx-border-strong); box-shadow: var(--sx-shadow-lift); animation: sx-rise var(--sx-slow) var(--sx-ease) both; }
