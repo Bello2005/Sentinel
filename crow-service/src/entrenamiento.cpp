@@ -3,7 +3,14 @@
 #include <array>
 #include <cstdio>
 #include <stdexcept>
-#include <sys/wait.h>
+#ifdef _WIN32
+    #include <windows.h>
+    #include <process.h>
+    #define pclose _pclose
+    #define popen _popen
+#else
+    #include <sys/wait.h>
+#endif
 
 namespace {
 
@@ -39,6 +46,10 @@ json Entrenamiento::ejecutar(const std::string& modulo, const std::vector<std::s
         throw std::runtime_error("El servicio de entrenamiento falló sin dar detalles (revise " + log.filename().string() + ").");
     }
     if (r.contains("error")) throw std::runtime_error(r["error"].get<std::string>());
+#ifdef _WIN32
+    if(estado != 0) throw std::runtime_error("El servicio de entrenamiento terminó con error.");
+#else
     if (!WIFEXITED(estado) || WEXITSTATUS(estado) != 0) throw std::runtime_error("El servicio de entrenamiento terminó con error.");
+#endif
     return r;
 }

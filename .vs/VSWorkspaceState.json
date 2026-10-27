@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\crow-service",
+    "\\crow-service\\src",
+    "\\deploy",
+    "\\deploy\\nginx",
+    "\\scripts"
+  ],
+  "SelectedNode": "\\scripts\\descargar_dependencias.sh",
+  "PreviewInSolutionExplorer": false
+}

@@ -17,6 +17,7 @@
 //   GET  /api/reportes/<id>/<archivo>       descarga un reporte generado (compatibilidad.html|json, predicciones.csv, ...)
 #define CROW_MAIN
 #include <crow.h>
+
 #include <crow/middlewares/cors.h>
 
 #include <algorithm>

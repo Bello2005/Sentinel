@@ -4,7 +4,11 @@
 // GestorModelo lo nota en la siguiente petición y carga la nueva; las peticiones en curso terminan con la anterior.
 #pragma once
 
-#include <onnxruntime_cxx_api.h>
+#ifdef _WIN32
+    #include <onnxruntime/onnxruntime_cxx_api.h>
+#else
+    #include <onnxruntime_cxx_api.h>
+#endif
 
 #include <filesystem>
 #include <memory>

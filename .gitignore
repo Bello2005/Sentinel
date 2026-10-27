@@ -22,3 +22,5 @@ shared/data/versiones/
 .DS_Store
 # Entorno de Python del repositorio
 .venv/
+
+descargas/

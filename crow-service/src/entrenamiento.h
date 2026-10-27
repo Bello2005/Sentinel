@@ -3,6 +3,7 @@
 // Se ejecuta `python -m app.<modulo> ...` dentro de ml-service/. Todos los argumentos son rutas que genera el propio
 // servidor (nunca texto del usuario: la justificación de una decisión viaja en un archivo JSON). Solo corre un
 // entrenamiento a la vez. La salida estándar de Python es un JSON; si trae "error", se devuelve ese mensaje.
+
 #pragma once
 
 #include <filesystem>
