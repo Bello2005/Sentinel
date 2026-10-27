@@ -22,3 +22,5 @@ shared/data/versiones/
 .DS_Store
 # Entorno de Python del repositorio
 .venv/
+# Usuarios de la plataforma (hashes de contraseñas): nunca a git
+shared/config/usuarios.json

@@ -1,0 +1,355 @@
+<a class="saltar" href="#contenido" (click)="ir('contenido', $event)">Saltar al contenido</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<!-- Navegación -->
+<header class="nav" [class.compacta]="compacta()">
+  <div class="nav-in">
+    <a class="marca" href="#inicio" (click)="ir('inicio', $event)" aria-label="SENTINEL, inicio">
+      <img src="sentinel.svg" width="32" height="32" alt="" />
+      <span><b>SENTINEL</b><small>Estudio Saber 11 · Chocó</small></span>
+    </a>
+    <nav class="enlaces" aria-label="Secciones del estudio">
+      @for (s of secciones; track s.id) {
+        <a [href]="'#' + s.id" (click)="ir(s.id, $event)" [class.activa]="seccionActiva() === s.id" [attr.aria-current]="seccionActiva() === s.id ? 'true' : null">{{ s.titulo }}</a>
+      }
+    </nav>
+    <div class="acciones">
+      <button class="icono" (click)="tema.alternar()" [attr.aria-label]="tema.modo() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
+        <span class="material-symbols-rounded">{{ tema.modo() === 'dark' ? 'light_mode' : 'dark_mode' }}</span></button>
+      @if (sesion.activa()) {
+        <a class="sx-btn primary" routerLink="/centro"><span class="material-symbols-rounded">space_dashboard</span><span class="txt">Ir a la plataforma</span></a>
+      } @else {
+        <a class="sx-btn primary" routerLink="/acceso"><span class="material-symbols-rounded">lock</span><span class="txt">Acceder</span></a>
+      }
+      <button class="icono menu" (click)="menuMovil.set(!menuMovil())" [attr.aria-expanded]="menuMovil()" aria-controls="menu-movil" aria-label="Menú de secciones">
+        <span class="material-symbols-rounded">{{ menuMovil() ? 'close' : 'menu' }}</span></button>
+    </div>
+  </div>
+  <div class="progreso" [style.transform]="'scaleX(' + progreso() + ')'" aria-hidden="true"></div>
+  @if (menuMovil()) {
+    <nav id="menu-movil" class="menu-movil" aria-label="Secciones">
+      @for (s of secciones; track s.id) { <a [href]="'#' + s.id" (click)="ir(s.id, $event)">{{ s.titulo }}</a> }
+    </nav>
+  }
+</header>
+
+<main id="contenido" tabindex="-1">
+  <!-- HERO -->
+  <section id="inicio" class="hero">
+    <div class="hero-texto">
+      <span class="eyebrow-chip"><span class="sx-dot pulse"></span>Datos abiertos del ICFES · {{ r()?.anios ?? '2010–2022' }}</span>
+      <h1>El Chocó, <span class="grad">último en Saber 11</span> entre 33 departamentos.</h1>
+      <p class="precision">Puntaje global promedio, {{ r()?.anio_ultimo ?? 2022 }}.</p>
+      <p class="bajada">
+        Analizamos <b>{{ num(r()?.estudiantes ?? 6225605) }}</b> resultados para medir la brecha, entender qué la explica y
+        construir una plataforma que pronostica el año siguiente con un principio innegociable: <b>ninguna IA decide sola</b>.
+      </p>
+      <div class="cta">
+        <a class="sx-btn primary lg" href="#brecha" (click)="ir('brecha', $event)">Explorar los hallazgos <span class="material-symbols-rounded">south</span></a>
+        <a class="sx-btn lg" [routerLink]="sesion.activa() ? '/centro' : '/acceso'"><span class="material-symbols-rounded">shield_lock</span>Plataforma de gobierno del modelo</a>
+      </div>
+      <ul class="sellos" aria-label="Características">
+        <li><span class="material-symbols-rounded" aria-hidden="true">verified</span>Datos oficiales y reproducibles</li>
+        <li><span class="material-symbols-rounded" aria-hidden="true">gavel</span>Aprobación humana obligatoria</li>
+        <li><span class="material-symbols-rounded" aria-hidden="true">lock_open</span>Hallazgos de acceso público</li>
+      </ul>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      @if (silueta(); as s) {
+        <svg [attr.viewBox]="s.viewBox" class="silueta">
+          <defs>
+            <linearGradient id="grad-silueta" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="var(--sx-accent)" stop-opacity="0.55" />
+              <stop offset="1" stop-color="var(--sx-candidate)" stop-opacity="0.35" />
+            </linearGradient>
+          </defs>
+          @for (m of s.municipios; track m.cod; let i = $index) {
+            <path [attr.d]="m.d" pathLength="1" [style.animation-delay.ms]="i * 55" />
+          }
+        </svg>
+      } @else { <div class="silueta-esqueleto sx-skeleton"></div> }
+      <div class="flotante f1"><span class="material-symbols-rounded">leaderboard</span><b>{{ r()?.puesto_choco ?? 33 }}/{{ r()?.departamentos ?? 33 }}</b><small>puesto nacional</small></div>
+      <div class="flotante f2"><span class="material-symbols-rounded">trending_down</span><b>{{ num(r()?.brecha_ultimo_anio ?? -45.8, 1) }}</b><small>puntos vs. el país · {{ r()?.anio_ultimo }}</small></div>
+      <div class="flotante f3"><span class="material-symbols-rounded">location_on</span><b>{{ r()?.municipios_10_mas_bajo ?? 26 }} de {{ r()?.municipios_con_dato ?? 30 }}</b><small>municipios en el 10 % más bajo</small></div>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="kpis" sxRevelar (visible)="kpisVisibles.set(true)" aria-label="Cifras principales">
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">database</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.estudiantes ?? null) : 0" /></b><span>resultados de Saber 11 analizados</span></div>
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">compare_arrows</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.brecha_ultimo_anio ?? null) : 0" [decimales]="1" /></b><span>puntos de brecha con el resto del país ({{ r()?.anio_ultimo }})</span></div>
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">groups</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.pct_cuartil_bajo ?? null) : 0" [decimales]="1" sufijo=" %" /></b><span>de los estudiantes del Chocó cae en el 25 % más bajo del país</span></div>
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">star</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.pct_10_mas_alto ?? null) : 0" [decimales]="1" sufijo=" %" /></b><span>llega al 10 % más alto (en el resto del país, 10 %)</span></div>
+  </section>
+
+  @if (datos.error()) {
+    <div class="sx-card aviso-error" role="alert"><span class="material-symbols-rounded">cloud_off</span>No se pudieron cargar los datos del estudio. Recargue la página.</div>
+  }
+
+  @if (e(); as e) {
+    <!-- 1. LA BRECHA EN EL TIEMPO -->
+    <section id="brecha" class="seccion" aria-labelledby="t-brecha">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">01</span>
+        <div><div class="eyebrow">La brecha en el tiempo</div>
+          <h2 id="t-brecha">Una distancia que no se cierra</h2>
+          <p>Desde 2014 el Chocó saca entre 31 y 48 puntos menos que el resto del país en el puntaje global. Medida en desviaciones —la forma
+             justa de comparar años—, la brecha incluso <b>se ensanchó</b>: de −0,72 en 2014 a −0,85 en 2022.</p></div>
+      </div>
+      <div class="panel" sxRevelar>
+        <div class="segmentado" role="radiogroup" aria-label="Medida">
+          <button role="radio" [attr.aria-checked]="modoEvolucion() === 'puntaje'" [class.sel]="modoEvolucion() === 'puntaje'" (click)="modoEvolucion.set('puntaje')">Puntaje global</button>
+          <button role="radio" [attr.aria-checked]="modoEvolucion() === 'z'" [class.sel]="modoEvolucion() === 'z'" (click)="modoEvolucion.set('z')">Frente al país (σ)</button>
+          <button role="radio" [attr.aria-checked]="modoEvolucion() === 'mat'" [class.sel]="modoEvolucion() === 'mat'" (click)="modoEvolucion.set('mat')">Matemáticas desde 2010</button>
+        </div>
+        @if (evolucion(); as o) { <sx-grafica [opciones]="o" [alto]="360" etiqueta="Evolución del puntaje del Chocó frente al resto del país" /> }
+        <p class="nota"><span class="material-symbols-rounded" aria-hidden="true">info</span>2018 y 2021 no aparecen: datos.gov.co no publica completos esos periodos de calendario A. El puntaje global existe desde 2014.</p>
+      </div>
+      <div class="insights" sxRevelar>
+        <article class="insight sx-r-hijo"><b>{{ num(e.evolucion.puntaje.brecha[e.evolucion.puntaje.brecha.length - 1], 1) }}</b><span>puntos de brecha en {{ e.resumen.anio_ultimo }}, sobre una escala de 0 a 500.</span></article>
+        <article class="insight sx-r-hijo"><b>−0,85 σ</b><span>en 2022: el estudiante chocoano típico está casi una desviación por debajo del país.</span></article>
+        <article class="insight sx-r-hijo"><b>Inglés</b><span>solo {{ num(e.evolucion.ingles_b1.choco[e.evolucion.ingles_b1.choco.length - 1], 1) }} % alcanza el nivel B1 o más, frente a {{ num(e.evolucion.ingles_b1.resto![e.evolucion.ingles_b1.resto!.length - 1], 1) }} % en el resto del país.</span></article>
+      </div>
+    </section>
+
+    <!-- 2. EN EL PAÍS -->
+    <section id="pais" class="seccion" aria-labelledby="t-pais">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">02</span>
+        <div><div class="eyebrow">Colombia, año a año</div>
+          <h2 id="t-pais">Último en 6 de los 7 años medidos</h2>
+          <p>Cada departamento se colorea por su distancia al promedio nacional. Presione <b>reproducir</b> para recorrer 2014 → 2022: el ranking se reordena,
+             pero el Chocó no sale del fondo: solo en 2016 Vaupés quedó por debajo.</p></div>
+      </div>
+      <div class="panel" sxRevelar><sx-mapa-pais [e]="e" /></div>
+    </section>
+
+    <!-- 3. DISTRIBUCIÓN -->
+    <section class="seccion" aria-labelledby="t-dist">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">03</span>
+        <div><div class="eyebrow">Dónde quedan los estudiantes</div>
+          <h2 id="t-dist">De cada 100 estudiantes del Chocó, {{ num(e.distribucion.extremos['Chocó']['25 % más bajo'], 0) }} quedan en el cuarto más bajo del país</h2>
+          <p>No es que unos pocos estudiantes bajen el promedio: toda la distribución está corrida hacia abajo. La brecha crece en la parte alta —quien
+             mejor sale en el Chocó saca bastante menos que quien mejor sale en el resto del país—.</p></div>
+      </div>
+      <div class="dos" sxRevelar (visible)="unidadesVisibles.set(true)">
+        <div class="panel unidades">
+          <div class="par">
+            <div><h3>Chocó</h3><sx-unidades [grupos]="unidadesChoco()" [activo]="unidadesVisibles()" /></div>
+            <div><h3>Resto del país</h3><sx-unidades [grupos]="unidadesResto()" [activo]="unidadesVisibles()" /></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>La distancia crece hacia arriba</h3>
+          @if (distribucion(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Puntaje por percentil en el Chocó y el resto del país" /> }
+          <p class="nota">En el percentil 5 la diferencia es de {{ num(e.distribucion.resto[0] - e.distribucion.choco[0], 0) }} puntos; en la mediana, de {{ num(e.distribucion.resto[9] - e.distribucion.choco[9], 0) }}.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. TERRITORIO -->
+    <section id="territorio" class="seccion" aria-labelledby="t-territorio">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">04</span>
+        <div><div class="eyebrow">El territorio</div>
+          <h2 id="t-territorio">{{ e.municipios.en_10_mas_bajo }} de {{ e.municipios.con_dato }} municipios, en el 10 % más bajo del país</h2>
+          <p>Explore los municipios: cambie el indicador para ver cómo la pobreza, la cobertura y el acceso a internet dibujan casi el mismo mapa que el puntaje.</p></div>
+      </div>
+      <div class="panel" sxRevelar><sx-mapa-choco [e]="e" /></div>
+      <div class="dos" sxRevelar>
+        <div class="panel">
+          <h3>Pobreza y puntaje van juntos</h3>
+          @if (dispersion(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Puntaje frente a pobreza multidimensional por municipio" /> }
+        </div>
+        <div class="panel destacado">
+          <span class="material-symbols-rounded" aria-hidden="true">insights</span>
+          <div class="cifra">{{ num(corrPobreza(), 2) }}</div>
+          <p>es la correlación entre pobreza multidimensional y puntaje en los municipios del Chocó: el factor de contexto que más se le parece al mapa del Saber 11.</p>
+          <p class="nota">Correlación no es causa: cada punto es un promedio de municipio.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. MATERIAS -->
+    <section class="seccion" aria-labelledby="t-materias">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">05</span>
+        <div><div class="eyebrow">Qué se aprende</div>
+          <h2 id="t-materias">La brecha está en todas las materias</h2>
+          <p>Ciencias naturales y lectura crítica son las más lejanas del país. Y un dato que rompe un estereotipo: en el Chocó <b>no hay ventaja de los hombres
+             en matemáticas</b>, mientras que en el resto del país sí.</p></div>
+      </div>
+      <div class="tres" sxRevelar>
+        <div class="panel sx-r-hijo"><h3>Distancia al país por materia</h3>@if (materias(); as o) { <sx-grafica [opciones]="o" [alto]="280" etiqueta="Desviaciones frente al país por materia" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Niveles de inglés</h3>@if (ingles(); as o) { <sx-grafica [opciones]="o" [alto]="280" etiqueta="Distribución por nivel de inglés" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Ventaja de los hombres (σ)</h3>@if (genero(); as o) { <sx-grafica [opciones]="o" [alto]="280" etiqueta="Diferencia entre hombres y mujeres por materia" /> }</div>
+      </div>
+    </section>
+
+    <!-- 6. HOGAR Y COLEGIO -->
+    <section id="hogar" class="seccion" aria-labelledby="t-hogar">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">06</span>
+        <div><div class="eyebrow">Hogar y colegio</div>
+          <h2 id="t-hogar">Las ventajas del hogar rinden menos en el Chocó</h2>
+          <p>Con madre sin estudios, la diferencia con el resto del país es de <b>{{ num(brechaMadre()?.baja, 0) }} puntos</b>; con madre profesional,
+             de <b>{{ num(brechaMadre()?.alta, 0) }}</b>. Y en el Chocó, a más estrato, <b>menos</b> puntaje: lo contrario que en el resto del país.</p></div>
+      </div>
+      <div class="tres" sxRevelar>
+        <div class="panel sx-r-hijo"><h3>Educación de la madre</h3>@if (madre(); as o) { <sx-grafica [opciones]="o" [alto]="290" etiqueta="Puntaje según educación de la madre" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Estrato del hogar</h3>@if (estrato(); as o) { <sx-grafica [opciones]="o" [alto]="290" etiqueta="Puntaje según estrato" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Tipo de colegio</h3>@if (tipoColegio(); as o) { <sx-grafica [opciones]="o" [alto]="290" etiqueta="Puntaje según tipo de colegio" /> }</div>
+      </div>
+    </section>
+
+    <!-- 7. QUÉ EXPLICA LA BRECHA -->
+    <section id="explicacion" class="seccion" aria-labelledby="t-explicacion">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">07</span>
+        <div><div class="eyebrow">Qué explica la brecha</div>
+          <h2 id="t-explicacion">El hogar explica una cuarta parte. El contexto, casi todo lo demás.</h2>
+          <p>Partimos de la brecha bruta y agregamos bloques de variables a un modelo de 1,1 millones de estudiantes (2019 y 2022). Comparando estudiantes
+             parecidos, la brecha baja de <b>{{ num(e.brecha.pasos[0].brecha, 1) }}</b> a <b>{{ num(e.brecha.pasos[e.brecha.pasos.length - 1].brecha, 1) }} puntos</b>,
+             y lo que queda ya no se distingue estadísticamente de cero.</p></div>
+      </div>
+      <div class="dos ancha" sxRevelar>
+        <div class="panel">@if (cascada(); as o) { <sx-grafica [opciones]="o" [alto]="380" etiqueta="Cascada de la brecha al agregar variables" /> }</div>
+        <div class="panel lista-pesos">
+          <h3>Lo que más pesa</h3>
+          <ol>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">diversity_3</span><div><b>Composición étnica de la matrícula</b><small>≈ −11 puntos. No es una causa: marca exclusión histórica, menos inversión y pertinencia del currículo y de la prueba.</small></div></li>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">home_work</span><div><b>Pobreza del municipio</b><small>≈ −8 puntos.</small></div></li>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">school</span><div><b>Docentes con posgrado</b><small>≈ −8 puntos: cerca de 20 % en el Chocó frente a 57-62 % en Nariño.</small></div></li>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">schedule</span><div><b>Extraedad en la media</b><small>≈ −5 puntos.</small></div></li>
+          </ol>
+          <p class="nota">Medir mejor el hogar (libros, alimentación, trabajo) casi no cambia la brecha: el problema no está solo dentro de la casa.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. DOS CHOCÓS -->
+    <section id="dos-chocos" class="seccion" aria-labelledby="t-dos">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">08</span>
+        <div><div class="eyebrow">Dos Chocós</div>
+          <h2 id="t-dos">Quibdó y el resto del departamento son historias distintas</h2>
+          <p>En el resto del Chocó, la brecha se explica casi entera por pobreza, composición étnica, extraedad y formación docente. Quibdó, en cambio, rinde
+             unos 20 puntos menos de lo que su contexto predice: es el <b>{{ puestoQuibdo() }}.º municipio más por debajo de lo esperado</b> entre
+             {{ e.brecha.total_municipios_comparados }} del país.</p></div>
+      </div>
+      <div class="dos ancha" sxRevelar>
+        <div class="panel">
+          <div class="fila-cab"><h3>Frente al país, año a año</h3>
+            <div class="segmentado chico" role="radiogroup" aria-label="Comparación">
+              <button role="radio" [attr.aria-checked]="!paresAjustados()" [class.sel]="!paresAjustados()" (click)="paresAjustados.set(false)">Bruta</button>
+              <button role="radio" [attr.aria-checked]="paresAjustados()" [class.sel]="paresAjustados()" (click)="paresAjustados.set(true)">A igual hogar</button>
+            </div></div>
+          @if (dosChocos(); as o) { <sx-grafica [opciones]="o" [alto]="340" etiqueta="Quibdó, resto del Chocó y pares del Pacífico frente al país" /> }
+        </div>
+        <div class="panel">
+          <h3>{{ colegiosAbajo().abajo }} de {{ colegiosAbajo().total }} colegios de Quibdó, por debajo de lo esperado</h3>
+          @if (colegios(); as o) { <sx-grafica [opciones]="o" [alto]="340" etiqueta="Colegios de Quibdó frente a lo esperado" /> }
+        </div>
+      </div>
+      <div class="insights" sxRevelar>
+        <article class="insight sx-r-hijo"><b>30 % vs 83 %</b><span>matrícula étnica según el SIMAT frente a quienes se reconocen afro o indígenas en el Saber 11, en Quibdó: un error de medición.</span></article>
+        <article class="insight sx-r-hijo"><b>−14 / −43</b><span>puntos frente a un estudiante parecido del país, con madre sin estudios / profesional: los títulos rinden menos.</span></article>
+        <article class="insight sx-r-hijo"><b>Último de 50</b><span>Educación de la U. Tecnológica del Chocó en el Saber Pro (lectura y razonamiento), principal fuente de docentes locales.</span></article>
+      </div>
+    </section>
+
+    <!-- HIPÓTESIS -->
+    <section class="seccion" aria-labelledby="t-hip">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">09</span>
+        <div><div class="eyebrow">Ideas puestas a prueba</div><h2 id="t-hip">Seis hipótesis, contrastadas con datos</h2>
+          <p>Antes de modelar, cada intuición se convirtió en una pregunta verificable. Varias ideas comunes no se sostienen.</p></div>
+      </div>
+      <div class="hipotesis" sxRevelar>
+        @for (h of e.hipotesis; track h.id) {
+          <article class="hip sx-r-hijo" [attr.data-v]="h.veredicto.startsWith('Parcial') ? 'parcial' : h.veredicto.startsWith('No') ? 'no' : 'si'">
+            <header><span class="id">{{ h.id }}</span><span class="veredicto">
+              <span class="material-symbols-rounded" aria-hidden="true">{{ h.veredicto.startsWith('Parcial') ? 'contrast' : h.veredicto.startsWith('No') ? 'cancel' : 'check_circle' }}</span>{{ h.veredicto }}</span></header>
+            <h3>{{ h.titulo }}</h3><p>{{ h.resultado }}</p>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- 10. EL MODELO -->
+    <section id="modelo" class="seccion" aria-labelledby="t-modelo">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">10</span>
+        <div><div class="eyebrow">Del estudio a una IA gobernada</div>
+          <h2 id="t-modelo">Pronosticar el próximo año, con una persona al mando</h2>
+          <p>SENTINEL estima el puntaje del año siguiente de cada municipio y colegio. Se equivoca en promedio <b>{{ num(e.modelo.mae.modelo, 2) }} puntos</b>
+             en el Chocó, por debajo de las reglas simples, y cada predicción trae su intervalo. Ninguna versión nueva entra a producción sin aprobación humana.</p></div>
+      </div>
+      <div class="dos ancha" sxRevelar>
+        <div class="panel">
+          <h3>Error medio en validación temporal</h3>
+          @if (modelo(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Error del modelo frente a reglas simples" /> }
+          <p class="nota">Cada año se predice solo con años anteriores. Menos es mejor.</p>
+        </div>
+        <div class="panel">
+          <h3>Un modelo que se explica solo</h3>
+          <ul class="pesos">
+            @for (c of coeficientes(); track c.nombre) {
+              <li><span>{{ c.nombre }}</span><span class="barra"><span [style.width.%]="abs(c.valor) * 100" [class.neg]="c.valor < 0"></span></span><b>{{ num(c.valor, 3) }}</b></li>
+            }
+          </ul>
+          <p class="nota">Predicción = combinación de la historia de cada unidad, sin intercepto: no inventa subidas ni bajadas del país.</p>
+        </div>
+      </div>
+      <ol class="pipeline" sxRevelar aria-label="Flujo de gobierno del modelo">
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span><b>Validar</b><small>esquema, tipos, rangos y reglas</small></li>
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">travel_explore</span><b>Explorar</b><small>EDA automático de cada archivo</small></li>
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">insights</span><b>Predecir</b><small>ONNX en C++, con intervalo</small></li>
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">science</span><b>Reentrenar</b><small>versión candidata, nunca activa</small></li>
+        <li class="sx-r-hijo humano"><span class="material-symbols-rounded" aria-hidden="true">gavel</span><b>Decidir</b><small>una persona aprueba y firma</small></li>
+      </ol>
+      <div class="cierre" sxRevelar>
+        <div><h3>¿Trabaja con este modelo?</h3><p class="sx-muted">La plataforma de validación, predicción y gobierno es de acceso restringido.</p></div>
+        <a class="sx-btn primary lg" [routerLink]="sesion.activa() ? '/centro' : '/acceso'"><span class="material-symbols-rounded">{{ sesion.activa() ? 'space_dashboard' : 'lock' }}</span>
+          {{ sesion.activa() ? 'Ir a la plataforma' : 'Acceder a la plataforma' }}</a>
+      </div>
+    </section>
+
+    <!-- METODOLOGÍA -->
+    <section class="seccion metodologia" aria-labelledby="t-met">
+      <div class="cabeza" sxRevelar><span class="num-seccion">11</span><div><div class="eyebrow">Cómo se hizo</div><h2 id="t-met">Metodología y cautelas</h2></div></div>
+      <div class="acordeon" sxRevelar>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">database</span>Fuentes</summary>
+          <ul>@for (f of e.fuentes; track f) { <li>{{ f }}</li> }</ul></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">cleaning_services</span>Limpieza de los datos</summary>
+          <p>Se quitaron copias exactas (2019-2 y 2022-2 traían cada estudiante dos veces), se unificaron códigos DANE y categorías del hogar, y los puntajes se
+             estandarizaron por periodo para comparar años. Solo se usan resultados publicables.</p></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">event_busy</span>Años incompletos</summary>
+          <p>Los datos abiertos no traen completos 2018 ni 2021 (calendario A). Esos años se excluyen y el modelo usa siempre el último año con datos.</p></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">balance</span>Cómo leer estos resultados</summary>
+          <p>El Saber 11 solo ve a quienes llegan a grado 11: en varios municipios del Chocó la cobertura en media es muy baja. Los datos de municipio son
+             promedios; las relaciones son asociaciones, no causas. La etnia no explica nada por sí misma: señala desigualdades acumuladas.</p></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">code</span>Reproducibilidad</summary>
+          <p>Todo el análisis y la plataforma son código abierto para el equipo: scripts de descarga, limpieza, análisis, modelo y esta misma página
+             (generada con <code>scripts/exportar_estudio.py</code> el {{ e.generado }}).</p></details>
+      </div>
+    </section>
+  }
+</main>
+
+<footer class="pie">
+  <div class="pie-in">
+    <div class="marca"><img src="sentinel.svg" width="28" height="28" alt="" /><span><b>SENTINEL</b><small>Predictive Governance Platform</small></span></div>
+    <p>Datos: ICFES (Saber 11), MEN, DANE, Unidad para las Víctimas y MinTIC. Publicados con licencia CC BY-SA 4.0; esta página usa solo datos agregados.</p>
+    <div class="pie-enlaces">
+      <a href="#inicio" (click)="ir('inicio', $event)">Volver arriba</a>
+      <a [routerLink]="sesion.activa() ? '/centro' : '/acceso'">Plataforma</a>
+    </div>
+  </div>
+</footer>

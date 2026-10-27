@@ -129,8 +129,9 @@ export class Api {
   }
   predecir(archivo: File) { return this.pedir(this.http.post<RespuestaPrediccion>(`${this.base}/predecir`, this.form(archivo))); }
   actualizar(archivo: File) { return this.pedir(this.http.post<RespuestaActualizacion>(`${this.base}/actualizar`, this.form(archivo))); }
-  decidir(version: string, accion: 'activar' | 'rechazar', justificacion: string, responsable: string) {
-    return this.pedir(this.http.post<RespuestaDecision>(`${this.base}/modelo/decision`, { version, accion, justificacion, responsable }));
+  /** El responsable no se envía: Crow usa el usuario de la sesión. */
+  decidir(version: string, accion: 'activar' | 'rechazar', justificacion: string) {
+    return this.pedir(this.http.post<RespuestaDecision>(`${this.base}/modelo/decision`, { version, accion, justificacion }));
   }
   /** Reporte de actualización de una candidata (shared/reportes/<id>/actualizacion.json). */
   actualizacion(reporteId: string) { return this.pedir(this.http.get<Actualizacion>(`${this.base}/reportes/${reporteId}/actualizacion.json`)); }

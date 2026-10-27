@@ -181,3 +181,11 @@ a { color: var(--sx-accent); }
 .mat-mdc-snack-bar-container.sx-snack-bad .mdc-snackbar__surface { background: var(--sx-panel) !important; border: 1px solid color-mix(in srgb, var(--sx-danger) 60%, transparent); }
 .mat-mdc-snack-bar-container .mat-mdc-snack-bar-label { color: var(--sx-text) !important; }
 .mat-mdc-snack-bar-container .mat-mdc-button { color: var(--sx-accent) !important; }
+
+// Revelado al hacer scroll (directiva sxRevelar de la landing)
+.sx-revelar { opacity: 0; transform: translateY(26px); transition: opacity 800ms var(--sx-ease), transform 800ms var(--sx-ease); }
+.sx-revelar.sx-visible { opacity: 1; transform: none; }
+.sx-revelar .sx-r-hijo { opacity: 0; transform: translateY(18px); transition: opacity 700ms var(--sx-ease), transform 700ms var(--sx-ease);
+                         transition-delay: calc(var(--sx-r-i, 0) * 90ms); }
+.sx-revelar.sx-visible .sx-r-hijo { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .sx-revelar, .sx-revelar .sx-r-hijo { opacity: 1; transform: none; transition: none; } }

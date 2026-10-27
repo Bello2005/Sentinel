@@ -2,7 +2,7 @@
 export interface Destino { ruta: string; titulo: string; icono: string; descripcion: string; grupo: 'Operación' | 'Gobierno' }
 
 export const DESTINOS: Destino[] = [
-  { ruta: '/', titulo: 'Command Center', icono: 'space_dashboard', descripcion: 'Estado del sistema y del modelo activo', grupo: 'Operación' },
+  { ruta: '/centro', titulo: 'Command Center', icono: 'space_dashboard', descripcion: 'Estado del sistema y del modelo activo', grupo: 'Operación' },
   { ruta: '/validacion', titulo: 'Validación', icono: 'fact_check', descripcion: 'Compatibilidad del dataset con el modelo', grupo: 'Operación' },
   { ruta: '/observatorio', titulo: 'Data Observatory', icono: 'travel_explore', descripcion: 'EDA automático del dataset', grupo: 'Operación' },
   { ruta: '/predicciones', titulo: 'Predicciones', icono: 'insights', descripcion: 'Pronóstico del año siguiente con intervalo', grupo: 'Operación' },

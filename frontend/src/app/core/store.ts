@@ -152,7 +152,7 @@ export const SentinelStore = signalStore(
         patchState(store, { comparaciones: { ...store.comparaciones(), [v.id]: a } });
       })),
       decidir: (version: string, accion: 'activar' | 'rechazar', justificacion: string, responsable: string) => ejecutar('decidir', async () => {
-        await firstValueFrom(api.decidir(version, accion, justificacion, responsable));
+        await firstValueFrom(api.decidir(version, accion, justificacion));
         const { [version]: _, ...resto } = store.comparaciones();
         patchState(store, { comparaciones: resto });
         registrar({ tipo: 'decision', titulo: `${version} ${accion === 'activar' ? 'activada' : 'rechazada'} por ${responsable}`,

@@ -2,12 +2,14 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
 import { haceCuanto } from '../core/formato';
+import { Sesion } from '../core/sesion';
 import { SentinelStore } from '../core/store';
 import { Tema } from '../core/tema';
 import { Estado } from '../shared/ui';
@@ -16,21 +18,21 @@ import { Paleta } from './paleta';
 
 @Component({
   selector: 'sx-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatTooltipModule, MatProgressBarModule, Paleta, Estado],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatTooltipModule, MatProgressBarModule, MatMenuModule, Paleta, Estado],
   host: { '(document:keydown)': 'atajo($event)', '[class.colapsada]': 'colapsada()', '[class.con-contexto]': 'contexto()' },
   template: `
     <a class="saltar" href="#contenido">Saltar al contenido</a>
     <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 
     <nav class="lateral sx-glass" aria-label="Navegación principal">
-      <a class="marca" routerLink="/" aria-label="SENTINEL, inicio">
+      <a class="marca" routerLink="/centro" aria-label="SENTINEL, Command Center">
         <img src="sentinel.svg" width="34" height="34" alt="" />
         <span class="texto"><b>SENTINEL</b><small>Predictive Governance</small></span>
       </a>
       @for (g of grupos; track g) {
         <div class="grupo">{{ g }}</div>
         @for (d of destinosDe(g); track d.ruta) {
-          <a class="item" [routerLink]="d.ruta" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: d.ruta === '/' }"
+          <a class="item" [routerLink]="d.ruta" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: false }"
              [matTooltip]="colapsada() ? d.titulo : ''" matTooltipPosition="right">
             <span class="material-symbols-rounded" aria-hidden="true">{{ d.icono }}</span>
             <span class="texto">{{ d.titulo }}</span>
@@ -40,6 +42,9 @@ import { Paleta } from './paleta';
           </a>
         }
       }
+      <a class="item estudio" routerLink="/" [matTooltip]="colapsada() ? 'Ver el estudio' : ''" matTooltipPosition="right">
+        <span class="material-symbols-rounded" aria-hidden="true">auto_stories</span><span class="texto">Ver el estudio</span>
+      </a>
       <div class="lema">
         <span class="material-symbols-rounded" aria-hidden="true">shield_person</span>
         <span class="texto">Human-controlled AI. Ningún modelo llega a producción sin aprobación humana.</span>
@@ -75,6 +80,17 @@ import { Paleta } from './paleta';
         <button class="icono" (click)="contexto.set(!contexto())" aria-label="Mostrar u ocultar panel contextual" matTooltip="Panel contextual">
           <span class="material-symbols-rounded">{{ contexto() ? 'right_panel_close' : 'right_panel_open' }}</span>
         </button>
+        @if (sesion.usuario(); as u) {
+          <button class="usuario" [matMenuTriggerFor]="menuUsuario" [attr.aria-label]="'Cuenta de ' + u.nombre">
+            <span class="avatar">{{ sesion.iniciales() }}</span><span class="nombre">{{ u.nombre }}</span>
+            <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
+          </button>
+          <mat-menu #menuUsuario="matMenu" xPosition="before">
+            <div class="menu-cab" mat-menu-item disabled><b>{{ u.nombre }}</b><small>&#64;{{ u.usuario }}</small></div>
+            <a mat-menu-item routerLink="/"><span class="material-symbols-rounded menu-ico">auto_stories</span>Ver el estudio</a>
+            <button mat-menu-item (click)="sesion.cerrar()"><span class="material-symbols-rounded menu-ico">logout</span>Cerrar sesión</button>
+          </mat-menu>
+        }
       </div>
       @if (store.trabajando()) { <mat-progress-bar class="progreso" mode="indeterminate" aria-label="Procesando" /> }
     </header>
@@ -115,6 +131,7 @@ import { Paleta } from './paleta';
 export class Shell {
   protected store = inject(SentinelStore);
   protected tema = inject(Tema);
+  protected sesion = inject(Sesion);
   private router = inject(Router);
   private movil = toSignal(inject(BreakpointObserver).observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
   protected colapsada = signal(false);

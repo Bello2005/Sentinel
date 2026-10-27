@@ -24,6 +24,8 @@
 
 1. [Qué es SENTINEL](#qué-es-sentinel)
 2. [Funcionalidades](#funcionalidades)
+   - [Landing pública con los resultados del estudio](#landing-pública-con-los-resultados-del-estudio)
+   - [Acceso y usuarios](#acceso-y-usuarios)
 3. [Arquitectura](#arquitectura)
 4. [Stack tecnológico](#stack-tecnológico)
 5. [Estructura del repositorio](#estructura-del-repositorio)
@@ -55,7 +57,8 @@ Lo que la diferencia de una aplicación de predicción común es el **control hu
 
 - Ningún archivo llega al modelo sin pasar una **validación** que explica cada problema y nunca corrige datos en silencio.
 - Cada reentrenamiento produce una versión **candidata** que se compara con la **activa** usando la misma métrica.
-- Solo una persona, con **responsable y justificación escrita**, puede activar o rechazar una candidata.
+- Solo una persona **autenticada**, con justificación escrita, puede activar o rechazar una candidata; la decisión
+  queda firmada con su nombre.
 - Todo queda **versionado y trazable**: qué modelo estuvo en producción, cuándo, con qué datos y quién lo decidió.
 
 ## Funcionalidades
@@ -72,6 +75,64 @@ Lo que la diferencia de una aplicación de predicción común es el **control hu
 | **Historial** | *Model Evolution Timeline* (v1 → v2 → …) y el registro de cada entrenamiento y cada decisión, con filtros |
 
 Además: paleta de comandos (`Ctrl/⌘ + K`), modo claro y oscuro, diseño adaptable, navegación con teclado y lista para instalarse como PWA.
+
+### Landing pública con los resultados del estudio
+
+La raíz del sitio (`/`) es una landing **pública** que cuenta los hallazgos del estudio con gráficas dinámicas hechas en
+Angular (ApexCharts y SVG propios), sin necesidad de iniciar sesión:
+
+| Sección | Qué muestra |
+|---|---|
+| Portada | Silueta animada del Chocó, cifras clave con contadores (puesto 33/33, 6,2 millones de resultados) |
+| 01 · La brecha | Evolución 2014–2022 del Chocó frente al resto del país: puntaje, desviaciones (z) y matemáticas |
+| 02 · El país | Mapa de Colombia por departamento con reproducción año a año y ranking animado |
+| 03 · Distribución | "De cada 100 estudiantes" (waffle) y percentiles |
+| 04 · Territorio | Mapa municipal del Chocó (puntaje, pobreza, cobertura, internet, cambio) y dispersión puntaje–IPM |
+| 05 · Materias, inglés y género | Brecha por área, niveles de inglés y diferencias por sexo |
+| 06 · Hogar | Educación de la madre, estrato y tipo de colegio |
+| 07 · Qué explica la brecha | Cascada de la descomposición y factores con más peso |
+| 08 · Dos Chocós | Comparación con municipios pares (bruta y ajustada) y colegios de Quibdó |
+| 09 · Hipótesis | H1–H6 con su veredicto |
+| 10 · El modelo | Error frente a las líneas base, coeficientes y flujo de gobierno, con acceso a la plataforma |
+| 11 · Metodología | Fuentes, definiciones y decisiones |
+
+Los datos de la landing viven en un único archivo estático, `frontend/public/estudio/estudio.json`, generado desde los
+resultados del análisis:
+
+```bash
+../.venv/bin/python scripts/exportar_estudio.py \
+    --geo-municipios <municipios.geojson> --geo-departamentos <departamentos.geojson>
+```
+
+El script lee `../resultados/`, `../informe/graficas/cifras_graficas.json`, `../datos/panel_municipal.parquet` y el
+modelo activo; simplifica los polígonos (Douglas-Peucker) y los proyecta a trayectos SVG para que el navegador no
+tenga que cargar GeoJSON.
+
+### Acceso y usuarios
+
+Todo lo que no es la landing (Command Center, Validación, Predicciones, Laboratorio, Decisión, Historial…) está
+detrás de un **inicio de sesión** en `/acceso`. Al entrar sin sesión a una ruta protegida, la interfaz lleva al acceso
+y, tras iniciar sesión, devuelve a la página pedida.
+
+- Los usuarios viven en `shared/config/usuarios.json` (fuera de git, permisos `0600`) con la contraseña derivada con
+  **PBKDF2-HMAC-SHA256** (210 000 iteraciones y sal aleatoria). No hay registro público: las cuentas las crea el
+  administrador.
+- Crow verifica la contraseña en C++ y entrega una cookie `sx_sesion` **HttpOnly**, `SameSite=Strict` y `Secure` detrás
+  de HTTPS, válida 8 horas. JavaScript nunca ve la credencial.
+- Tras 5 intentos fallidos en 15 minutos desde una IP, el acceso responde 429.
+- Toda ruta `/api/*` exige sesión, salvo `/api/salud` y `/api/auth/*`. La landing y `estudio.json` son públicos.
+
+Administración de cuentas (pide la contraseña sin mostrarla; mínimo 10 caracteres):
+
+```bash
+cd ml-service
+../.venv/bin/python -m app.usuarios crear ana --nombre "Ana Mosquera"
+../.venv/bin/python -m app.usuarios clave ana       # cambiar contraseña
+../.venv/bin/python -m app.usuarios listar
+../.venv/bin/python -m app.usuarios eliminar ana
+```
+
+Crow relee el archivo en cada inicio de sesión, así que no hace falta reiniciar el servicio.
 
 ## Arquitectura
 
@@ -341,11 +402,16 @@ scripts/instalar.sh                    # recompila lo necesario
 systemctl --user restart sentinel      # o: sudo systemctl restart sentinel
 ```
 
+En la primera instalación (o si `shared/config/usuarios.json` no existe) Crow avisa al arrancar que no hay usuarios:
+cree al menos uno con `app.usuarios crear` (ver [Acceso y usuarios](#acceso-y-usuarios)).
+
 > `shared/models/` y `shared/data/` viven en el servidor: las versiones que se entrenan y aprueban allí se conservan
 > entre actualizaciones. Haga copia de `shared/` antes de cambios grandes.
 
 ## Recorrido de demostración
 
+0. **Landing (`/`)**: los hallazgos del estudio; **Acceder** lleva a `/acceso`. Inicie sesión con una cuenta creada
+   con `app.usuarios` (el panel queda en `/centro`).
 1. **Validación → Cargar ejemplo → Compatible**: archivo listo para predecir, salud de los datos alta.
 2. **Cargar ejemplo → Falta una variable** (o *Tipo incompatible*, *Valores faltantes*, *Categoría nueva*): estado
    *Incompatible*, la etapa que falla en el recorrido y cada hallazgo con sus filas.
@@ -354,7 +420,7 @@ systemctl --user restart sentinel      # o: sudo systemctl restart sentinel
 4. **Predicciones → Generar predicciones** con el archivo compatible: 155 unidades con intervalo.
 5. **Laboratorio → Cargar ejemplo → Novedades 2022 → Entrenar versión candidata**: nace v2 como candidata.
 6. **Comparación**: v1 frente a v2, métrica por métrica.
-7. **Centro de decisión**: checklist, responsable, justificación → **Activar v2**.
+7. **Centro de decisión**: checklist y justificación (firma el usuario de la sesión) → **Activar v2**.
 8. **Historial**: el *Model Evolution Timeline* muestra v1 → v2 con la decisión.
 
 Para volver al estado inicial (solo v1 activa), restaure `shared/models/` desde git: `git checkout -- shared/models`
@@ -362,25 +428,33 @@ y borre `shared/models/v2`, `shared/data/versiones`, `shared/data/lotes` y `shar
 
 ## API REST
 
-Base: `/api`. Los archivos se envían como `multipart/form-data` en el campo `archivo` (o como cuerpo crudo).
+Base: `/api`. Salvo las rutas marcadas como públicas, todas exigen la cookie de sesión (sin ella responden 401).
+Los archivos se envían como `multipart/form-data` en el campo `archivo` (o como cuerpo crudo).
 Los errores devuelven `{"error": "mensaje legible"}`, nunca trazas técnicas.
 
 | Método | Ruta | Función | Respuestas |
 |---|---|---|---|
-| `GET` | `/api/salud` | Estado del servicio y modelo activo | 200 |
+| `POST` | `/api/auth/login` | `{"usuario","clave"}` → cookie de sesión | 200 · 401 · 429 |
+| `POST` | `/api/auth/logout` | Cierra la sesión | 200 |
+| `GET` | `/api/auth/sesion` | `{"activa":false}` o `{"activa":true,"usuario","nombre"}` | 200 |
+| `GET` | `/api/salud` | Estado del servicio y modelo activo (público) | 200 |
 | `GET` | `/api/modelo` | Metadatos del modelo activo y registro de versiones | 200 · 503 sin modelo |
 | `POST` | `/api/validar?modo=prediccion` | Valida un CSV; `modo=entrenamiento` exige `puntaje_real` | 200 · 400 |
 | `POST` | `/api/eda` | EDA automático de cualquier CSV | 200 · 400 |
 | `POST` | `/api/predecir` | Valida y, solo si no hay errores, predice | 200 · **409 incompatible, sin predicciones** |
 | `POST` | `/api/actualizar` | Datos etiquetados → EDA → candidata → comparación | 200 · 409 · 400 |
-| `POST` | `/api/modelo/decision` | `{"version","accion":"activar"\|"rechazar","justificacion","responsable"}` | 200 · 400 |
+| `POST` | `/api/modelo/decision` | `{"version","accion":"activar"\|"rechazar","justificacion"}`; el responsable es el usuario de la sesión | 200 · 400 |
 | `GET` | `/api/reportes/<id>/<archivo>` | Descarga un reporte generado | 200 · 404 |
 
 ```bash
-curl -F "archivo=@pruebas/01_compatible.csv" http://localhost:8090/api/predecir
-curl -F "archivo=@pruebas/08_novedades_2022_etiquetadas.csv" http://localhost:8090/api/actualizar
-curl -X POST -H "Content-Type: application/json" \
-     -d '{"version":"v2","accion":"activar","responsable":"Equipo","justificacion":"Incorpora 2022 y no empeora"}' \
+# Inicia sesión y guarda la cookie (pide la contraseña sin dejarla en el historial)
+read -rs CLAVE && curl -c sesion.txt -H "Content-Type: application/json" \
+     -d "{\"usuario\":\"ana\",\"clave\":\"$CLAVE\"}" http://localhost:8090/api/auth/login
+
+curl -b sesion.txt -F "archivo=@pruebas/01_compatible.csv" http://localhost:8090/api/predecir
+curl -b sesion.txt -F "archivo=@pruebas/08_novedades_2022_etiquetadas.csv" http://localhost:8090/api/actualizar
+curl -b sesion.txt -X POST -H "Content-Type: application/json" \
+     -d '{"version":"v2","accion":"activar","justificacion":"Incorpora 2022 y no empeora"}' \
      http://localhost:8090/api/modelo/decision
 ```
 
@@ -550,6 +624,9 @@ Detalle y comandos `curl` en [`pruebas/README.md`](pruebas/README.md).
 
 ## Seguridad
 
+- La plataforma exige inicio de sesión (PBKDF2, cookie HttpOnly/SameSite=Strict, límite de intentos); ver
+  [Acceso y usuarios](#acceso-y-usuarios). Las cuentas nunca se guardan en git.
+- La decisión sobre una versión la firma el usuario autenticado: el cliente no puede enviar otro responsable.
 - Las predicciones solo se ejecutan después de aprobar la validación; un archivo incompatible responde 409.
 - El texto que escribe el usuario (la justificación) nunca pasa por la línea de comandos: viaja en un archivo JSON.
 - Solo corre un entrenamiento a la vez.
@@ -571,6 +648,8 @@ Detalle y comandos `curl` en [`pruebas/README.md`](pruebas/README.md).
 | `El servicio de entrenamiento falló` | Revise `shared/reportes/<id>/python.log`; verifique `--python` y `--ml-service` |
 | El servicio de usuario se detiene al cerrar SSH | `loginctl enable-linger $USER` |
 | Puerto ocupado | `PUERTO=9000 scripts/iniciar.sh` |
+| "Usuario o contraseña incorrectos" con la cuenta correcta | La cuenta no existe en ese servidor: `python -m app.usuarios listar` |
+| "Demasiados intentos" | Espere 15 minutos (el límite es por IP) |
 
 ## Limitaciones conocidas
 

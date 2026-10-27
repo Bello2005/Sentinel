@@ -6,18 +6,20 @@
 //       y cualquier ruta que no sea /api devuelve index.html (navegación de una SPA). --host por defecto 0.0.0.0.
 //
 // Endpoints:
-//   GET  /api/salud                         el servicio está vivo
+//   GET  /api/salud                         el servicio está vivo (público)
+//   POST /api/auth/login                    {"usuario","clave"} → cookie de sesión HttpOnly (público, con límite de intentos)
+//   POST /api/auth/logout · GET /api/auth/sesion
+//   Todo lo demás de /api exige sesión (middleware Autenticacion). La interfaz y estudio/estudio.json son públicos.
 //   GET  /api/modelo                        metadatos del modelo activo y registro de versiones
 //   POST /api/eda                           EDA automático de cualquier CSV (aunque sea incompatible con el modelo)
 //   POST /api/validar?modo=prediccion       valida un CSV (multipart, campo "archivo"); modo=entrenamiento exige el objetivo
 //   POST /api/predecir                      valida y, solo si no hay errores, predice con el modelo activo
 //                                           (archivo incompatible: HTTP 409 con el reporte y sin predicciones)
 //   POST /api/actualizar                    datos etiquetados: valida, hace EDA, Python entrena una CANDIDATA y la compara
-//   POST /api/modelo/decision               {"version","accion":"activar"|"rechazar","justificacion","responsable"}
+//   POST /api/modelo/decision               {"version","accion":"activar"|"rechazar","justificacion"}; el responsable es el usuario de la sesión
 //   GET  /api/reportes/<id>/<archivo>       descarga un reporte generado (compatibilidad.html|json, predicciones.csv, ...)
 #define CROW_MAIN
 #include <crow.h>
-#include <crow/middlewares/cors.h>
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +30,7 @@
 #include <regex>
 #include <set>
 
+#include "autenticacion.h"
 #include "eda.h"
 #include "entrenamiento.h"
 #include "modelo.h"
@@ -148,13 +151,54 @@ int main(int argc, char** argv) {
     Contexto ctx{fs::absolute(shared), GestorModelo(fs::absolute(shared)),
                  Entrenamiento(python.find('/') == std::string::npos ? fs::path(python) : fs::absolute(python), fs::absolute(ml))};
     fs::create_directories(ctx.shared / "reportes");
+    Sesiones sesiones(ctx.shared / "config" / "usuarios.json");
+    if (sesiones.usuarios_registrados() == 0)
+        CROW_LOG_WARNING << "No hay usuarios: nadie podrá entrar a la plataforma. Cree uno con "
+                            "'python -m app.usuarios crear <usuario> --nombre \"...\"' en ml-service/";
 
-    crow::App<crow::CORSHandler> app;
-    // En producción Nginx sirve Angular y la API en el mismo dominio; CORS abierto solo ayuda en desarrollo (ng serve)
-    app.get_middleware<crow::CORSHandler>().global().origin("*").methods("GET"_method, "POST"_method).headers("Content-Type");
+    // Sin CORS: en producción la interfaz y la API comparten dominio, y en desarrollo ng serve usa un proxy.
+    // Así la cookie de sesión (SameSite=Strict) nunca sale hacia otros orígenes.
+    crow::App<Autenticacion> app;
+    app.get_middleware<Autenticacion>().sesiones = &sesiones;
+
+    CROW_ROUTE(app, "/api/auth/login").methods("POST"_method)([&](const crow::request& req) {
+        const std::string ip = ip_cliente(req);
+        int espera = 0;
+        if (!sesiones.permitido(ip, espera))
+            return error_resp(429, "Demasiados intentos fallidos. Espere " + std::to_string((espera + 59) / 60) + " min.");
+        json s = json::parse(req.body, nullptr, false);
+        if (s.is_discarded() || !s.contains("usuario") || !s.contains("clave"))
+            return error_resp(400, "Envíe usuario y contraseña.");
+        Usuario u;
+        auto token = sesiones.iniciar(s.value("usuario", ""), s.value("clave", ""), u);
+        if (!token) {
+            sesiones.registrar_fallo(ip);
+            CROW_LOG_WARNING << "Inicio de sesión fallido desde " << ip;
+            return error_resp(401, "Usuario o contraseña incorrectos.");
+        }
+        sesiones.limpiar_fallos(ip);
+        CROW_LOG_INFO << "Sesión iniciada: " << u.usuario << " desde " << ip;
+        auto r = json_resp(200, {{"usuario", u.usuario}, {"nombre", u.nombre}});
+        r.set_header("Set-Cookie", cookie_sesion(req, *token, int(std::chrono::seconds(Sesiones::DURACION).count())));
+        return r;
+    });
+
+    CROW_ROUTE(app, "/api/auth/logout").methods("POST"_method)([&](const crow::request& req) {
+        sesiones.cerrar(leer_cookie(req, "sx_sesion"));
+        auto r = json_resp(200, {{"ok", true}});
+        r.set_header("Set-Cookie", cookie_sesion(req, "", 0));
+        return r;
+    });
+
+    // Pública: la landing pregunta si hay sesión sin provocar un 401
+    CROW_ROUTE(app, "/api/auth/sesion")([&](const crow::request& req) {
+        auto u = sesiones.validar(leer_cookie(req, "sx_sesion"));
+        if (!u) return json_resp(200, {{"activa", false}});
+        return json_resp(200, {{"activa", true}, {"usuario", u->usuario}, {"nombre", u->nombre}});
+    });
 
     CROW_ROUTE(app, "/api/salud")([&] {
-        json j = {{"estado", "ok"}, {"shared", ctx.shared.string()}};
+        json j = {{"estado", "ok"}};
         try { j["modelo_activo"] = ctx.modelos.activo()->version(); } catch (const std::exception& e) { j["modelo_activo"] = nullptr; }
         return json_resp(200, j);
     });
@@ -278,7 +322,8 @@ int main(int argc, char** argv) {
             fs::create_directories(carpeta);
             const fs::path solicitud = carpeta / (id + ".json");
             std::ofstream(solicitud) << json{{"version", s["version"]}, {"accion", s["accion"]},
-                                             {"justificacion", s.value("justificacion", "")}, {"responsable", s.value("responsable", "")},
+                                             {"justificacion", s.value("justificacion", "")},
+                                             {"responsable", app.get_context<Autenticacion>(req).usuario->nombre},
                                              {"fecha", ahora_iso()}}.dump(2);
             json reg = ctx.python.ejecutar("decidir", {"--solicitud", solicitud.string()}, carpeta / "python.log");
             json out = {{"registro", reg}};

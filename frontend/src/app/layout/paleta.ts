@@ -3,6 +3,7 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { Component, ElementRef, computed, inject, output, signal, viewChild, afterNextRender } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { Sesion } from '../core/sesion';
 import { SentinelStore } from '../core/store';
 import { Tema } from '../core/tema';
 import { DESTINOS } from './navegacion';
@@ -57,6 +58,7 @@ export class Paleta {
   private router = inject(Router);
   private tema = inject(Tema);
   private store = inject(SentinelStore);
+  private sesion = inject(Sesion);
   private campo = viewChild.required<ElementRef<HTMLInputElement>>('campo');
   protected texto = signal('');
   protected activo = signal(0);
@@ -64,6 +66,8 @@ export class Paleta {
   private comandos = computed<Comando[]>(() => [
     ...DESTINOS.map(d => ({ titulo: d.titulo, detalle: d.descripcion, icono: d.icono, grupo: 'Ir a', accion: () => this.router.navigateByUrl(d.ruta) })),
     { titulo: 'Cambiar tema', detalle: this.tema.modo() === 'dark' ? 'Pasar a modo claro' : 'Pasar a modo oscuro', icono: 'contrast', grupo: 'Acciones', accion: () => this.tema.alternar() },
+    { titulo: 'Ver el estudio', detalle: 'Landing pública con los resultados', icono: 'auto_stories', grupo: 'Acciones', accion: () => this.router.navigateByUrl('/') },
+    { titulo: 'Cerrar sesión', detalle: this.sesion.usuario()?.nombre ?? '', icono: 'logout', grupo: 'Acciones', accion: () => this.sesion.cerrar() },
     { titulo: 'Actualizar estado', detalle: 'Volver a consultar la API y el modelo', icono: 'refresh', grupo: 'Acciones', accion: () => this.store.cargarModelo() },
     ...(this.store.archivo() ? [
       { titulo: 'Validar dataset en sesión', detalle: this.store.archivo()!.name, icono: 'fact_check', grupo: 'Acciones',
