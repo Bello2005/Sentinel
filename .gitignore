@@ -23,4 +23,5 @@ shared/data/versiones/
 # Entorno de Python del repositorio
 .venv/
 .vs/
+.vscode/
 descargas/
