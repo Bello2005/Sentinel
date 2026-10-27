@@ -7,7 +7,7 @@
 struct sqlite3;
 
 struct Usuario {
-    std::int64_t id = 0;
+    std::int64_t id = 0; 
     std::string nombre_completo;
     std::string correo;
     std::string organizacion;

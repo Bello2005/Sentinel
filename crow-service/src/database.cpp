@@ -217,37 +217,37 @@ private:
 
 void crear_esquema(sqlite3* db) {
     const std::string sql = R"sql(
-CREATE TABLE IF NOT EXISTS usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre_completo TEXT NOT NULL,
-    correo TEXT NOT NULL COLLATE NOCASE UNIQUE,
-    organizacion TEXT NOT NULL,
-    comentario TEXT NOT NULL,
-    cargo TEXT NOT NULL DEFAULT '',
-    telefono TEXT NOT NULL DEFAULT '',
-    ciudad TEXT NOT NULL DEFAULT '',
-    departamento TEXT NOT NULL DEFAULT '',
-    pais TEXT NOT NULL DEFAULT 'Colombia',
-    rol TEXT NOT NULL DEFAULT 'analista',
-    estado TEXT NOT NULL DEFAULT 'pendiente',
-    fecha_solicitud TEXT NOT NULL DEFAULT (datetime('now')),
-    fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now'))
-);
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre_completo TEXT NOT NULL,
+            correo TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            organizacion TEXT NOT NULL,
+            comentario TEXT NOT NULL,
+            cargo TEXT NOT NULL DEFAULT '',
+            telefono TEXT NOT NULL DEFAULT '',
+            ciudad TEXT NOT NULL DEFAULT '',
+            departamento TEXT NOT NULL DEFAULT '',
+            pais TEXT NOT NULL DEFAULT 'Colombia',
+            rol TEXT NOT NULL DEFAULT 'analista',
+            estado TEXT NOT NULL DEFAULT 'pendiente',
+            fecha_solicitud TEXT NOT NULL DEFAULT (datetime('now')),
+            fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now'))
+        );
 
-CREATE TABLE IF NOT EXISTS credenciales (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    usuario_id INTEGER NOT NULL UNIQUE,
-    username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-    password TEXT NOT NULL,
-    activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
-    ultimo_acceso TEXT,
-    fecha_creacion TEXT NOT NULL DEFAULT (datetime('now')),
-    fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-);
+        CREATE TABLE IF NOT EXISTS credenciales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id INTEGER NOT NULL UNIQUE,
+            username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            password TEXT NOT NULL,
+            activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+            ultimo_acceso TEXT,
+            fecha_creacion TEXT NOT NULL DEFAULT (datetime('now')),
+            fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        );
 
-CREATE INDEX IF NOT EXISTS idx_usuarios_estado ON usuarios(estado);
-)sql";
+        CREATE INDEX IF NOT EXISTS idx_usuarios_estado ON usuarios(estado);
+        )sql";
     ejecutar_sql(db, sql, "No se pudo crear el esquema de usuarios");
 }
 
