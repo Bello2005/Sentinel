@@ -146,11 +146,16 @@ export class Landing {
     const m = this.e()?.municipios.lista.filter(x => x.puntaje !== null && x.ipm !== null);
     if (!m) return null;
     const q = m.find(x => x.cod === '27001');
+    // Margen en los ejes para que ningún punto quede pegado al borde ni su tooltip se salga
+    const ys = m.map(x => x.puntaje!), xs = m.map(x => x.ipm!);
+    const yMin = Math.floor((Math.min(...ys) - 5) / 10) * 10, yMax = Math.ceil((Math.max(...ys) + 5) / 10) * 10;
+    const xMin = Math.floor((Math.min(...xs) - 3) / 10) * 10, xMax = Math.ceil((Math.max(...xs) + 3) / 10) * 10;
     return { chart: { type: 'scatter', zoom: { enabled: false } },
              series: [{ name: 'Municipios', data: m.map(x => ({ x: x.ipm!, y: x.puntaje!, nombre: x.nombre })) }] as ApexOptions['series'],
-             colors: [this.t('accent')], markers: { size: 7, strokeWidth: 0, fillOpacity: 0.85 },
-             xaxis: { type: 'numeric', title: { text: 'Pobreza multidimensional (%)' }, tickAmount: 6, labels: { formatter: (v: string) => num(+v, 0) } },
-             yaxis: { title: { text: 'Puntaje global' }, labels: { formatter: (v: number) => num(v, 0) } },
+             colors: [this.t('accent')], markers: { size: 7, strokeWidth: 0, fillOpacity: 0.85, hover: { sizeOffset: 3 } },
+             states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } },
+             xaxis: { type: 'numeric', min: xMin, max: xMax, tooltip: { enabled: false }, title: { text: 'Pobreza multidimensional (%)' }, tickAmount: (xMax - xMin) / 10, labels: { formatter: (v: string) => num(+v, 0) } },
+             yaxis: { min: yMin, max: yMax, tickAmount: (yMax - yMin) / 10, title: { text: 'Puntaje global' }, labels: { formatter: (v: number) => num(v, 0) } },
              tooltip: { custom: ({ dataPointIndex }: { dataPointIndex: number }) => {
                const x = m[dataPointIndex];
                return `<div style="padding:8px 10px"><b>${x.nombre}</b><br>Puntaje ${num(x.puntaje, 1)} · Pobreza ${num(x.ipm, 1)} %</div>`; } },

@@ -24,6 +24,7 @@ ESTUDIO = RAIZ.parent                      # proyecto de análisis saber11-choco
 RES = ESTUDIO / "resultados"
 SALIDA = RAIZ / "frontend" / "public" / "estudio" / "estudio.json"
 COD_CHOCO = "27"
+QUIBDO_CABECERA = (-76.6611, 5.6947)  # lon, lat de la cabecera municipal
 
 
 def r(x, d=2):
@@ -67,8 +68,9 @@ def anillos(geom):
     return []
 
 
-def proyectar(features, ancho, tol_rel, area_min_rel=0.0):
-    """Proyecta y simplifica: devuelve viewBox y, por rasgo, el trazo SVG y su centroide aproximado."""
+def proyectar(features, ancho, tol_rel, area_min_rel=0.0, puntos=None):
+    """Proyecta y simplifica: devuelve viewBox y, por rasgo, el trazo SVG y su centroide aproximado.
+    `puntos` ({nombre: (lon, lat)}) se proyectan con la misma escala y salen en caja["puntos"]."""
     todos = [(x, y) for f in features for an in anillos(f["geometry"]) for x, y in an]
     lat0 = sum(y for _, y in todos) / len(todos)
     k = math.cos(math.radians(lat0))
@@ -96,7 +98,10 @@ def proyectar(features, ancho, tol_rel, area_min_rel=0.0):
         if partes:
             salida.append({"d": "".join(partes), "cx": r(cx_acum / area_total, 1), "cy": r(cy_acum / area_total, 1),
                            "props": f["properties"]})
-    return {"viewBox": f"0 0 {ancho} {alto:.0f}", "ancho": ancho, "alto": round(alto)}, salida
+    caja = {"viewBox": f"0 0 {ancho} {alto:.0f}", "ancho": ancho, "alto": round(alto)}
+    if puntos:
+        caja["puntos"] = {n: {"cx": r((x * k - minx) * esc, 1), "cy": r((-y - miny) * esc, 1)} for n, (x, y) in puntos.items()}
+    return caja, salida
 
 
 # --- Secciones -----------------------------------------------------------------------------------------------------
@@ -142,7 +147,8 @@ def municipios(geo_mpios):
     corte_10 = pais.saber_puntaje_global.quantile(0.10)
     c = p[p.depto_cod == COD_CHOCO].copy()
     c["en_10_mas_bajo"] = c.saber_puntaje_global <= corte_10
-    pais = pais.assign(puesto=pais.saber_puntaje_global.rank(ascending=True, method="min"))
+    # Puesto 1 = mejor puntaje del país
+    pais = pais.assign(puesto=pais.saber_puntaje_global.rank(ascending=False, method="min"))
     puestos = dict(zip(pais.mcpio_cod, pais.puesto))
     filas = []
     for _, m in c.iterrows():
@@ -157,7 +163,8 @@ def municipios(geo_mpios):
             "en_10_mas_bajo": bool(m.en_10_mas_bajo),
         })
     feats = [f for f in geo_mpios["features"] if str(f["properties"]["DPTO"]).zfill(2) == COD_CHOCO]
-    caja, trazos = proyectar(feats, 420, 0.0012, area_min_rel=4e-7)
+    # El marcador va en la cabecera real: el municipio de Quibdó rodea a Medio Atrato y su centroide cae fuera de él
+    caja, trazos = proyectar(feats, 420, 0.0012, area_min_rel=4e-7, puntos={"quibdo": QUIBDO_CABECERA})
     mapa = {**caja, "municipios": [{"cod": t["props"]["MPIOS"], "nombre_mapa": t["props"]["NOMBRE_MPI"], "d": t["d"],
                                       "cx": t["cx"], "cy": t["cy"]} for t in trazos]}
     con_dato = [f for f in filas if f["puntaje"] is not None]

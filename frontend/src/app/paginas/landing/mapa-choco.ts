@@ -180,7 +180,7 @@ export class MapaChoco {
     const v = m[this.ind().id];
     return { ...t, m, sinDato: v === null || v === undefined, color: this.colorDe(m), etiqueta: `${m.nombre}: ${this.ind().corto} ${this.valorTxt(m)}` };
   }));
-  protected quibdo = computed(() => this.e().municipios.mapa.municipios.find(t => t.cod === '27001') ?? null);
+  protected quibdo = computed(() => this.e().municipios.mapa.puntos?.['quibdo'] ?? this.e().municipios.mapa.municipios.find(t => t.cod === '27001') ?? null);
 
   protected ranking = computed(() => {
     const id = this.ind().id, mejorAlto = this.ind().mejorAlto;

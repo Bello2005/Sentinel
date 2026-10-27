@@ -25,7 +25,7 @@ export interface Estudio {
     z_por_anio: { anios: number[]; series: { cod: string | null; nombre: string; z: (number | null)[] }[] };
     mapa: Mapa & { deptos: Trazo[] };
   };
-  municipios: { lista: Municipio[]; mapa: Mapa & { municipios: Trazo[] }; total_municipios_pais: number; en_10_mas_bajo: number; con_dato: number; corte_10_pais: number };
+  municipios: { lista: Municipio[]; mapa: Mapa & { municipios: Trazo[]; puntos?: Record<string, { cx: number; cy: number }> }; total_municipios_pais: number; en_10_mas_bajo: number; con_dato: number; corte_10_pais: number };
   distribucion: { percentiles: number[]; choco: number[]; resto: number[];
                   estadisticos: Record<string, { media: number; mediana: number; desv: number; p10: number; p90: number; n: number }>;
                   extremos: Record<string, Record<string, number>> };
