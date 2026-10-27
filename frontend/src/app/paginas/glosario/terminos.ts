@@ -99,7 +99,7 @@ export const TERMINOS: Termino[] = [
     alias: ['causalidad', 'asociación'], ver: ['correlacion'] },
   { id: 'ranking', termino: 'Ranking o puesto', categoria: 'numeros', icono: 'leaderboard',
     corto: 'La lista ordenada de mejor a peor puntaje. El puesto 1 es el mejor.',
-    texto: 'Ordenamos a los 33 departamentos (o a los municipios del país) según su puntaje promedio. El Chocó ocupa el puesto 33 de 33: el último.',
+    texto: 'Ordenamos a los 32 departamentos y a Bogotá (que se cuenta aparte) según su puntaje promedio. Son 33 en total, y el Chocó ocupa el puesto 33: el último. Lo mismo se hace con los municipios del país.',
     alias: ['puesto', 'posición'] },
   { id: 'no-distingue-cero', termino: 'No se distingue de cero', categoria: 'numeros', icono: 'exposure_zero',
     corto: 'La diferencia que queda es tan pequeña que podría ser pura casualidad.',
@@ -109,8 +109,8 @@ export const TERMINOS: Termino[] = [
 
   // --- El lugar y la casa ----------------------------------------------------------------------------------------
   { id: 'municipio', termino: 'Departamento y municipio', categoria: 'territorio', icono: 'map',
-    corto: 'Colombia se divide en 33 departamentos (con Bogotá); cada uno se divide en municipios.',
-    texto: 'El Chocó es un departamento con 30 municipios. Quibdó es su capital. Cuando mostramos un municipio, sus números son el promedio de los estudiantes de sus colegios.',
+    corto: 'Colombia tiene 32 departamentos y Bogotá, que se cuenta aparte; cada departamento se divide en municipios.',
+    texto: 'Bogotá es un distrito capital: no pertenece a ningún departamento, por eso en las comparaciones aparece como uno más (33 en total). El Chocó es un departamento con 30 municipios. Quibdó es su capital. Cuando mostramos un municipio, sus números son el promedio de los estudiantes de sus colegios.',
     alias: ['departamento', 'municipios', 'departamentos'] },
   { id: 'pobreza-multidimensional', termino: 'Pobreza multidimensional', categoria: 'territorio', icono: 'home_work',
     corto: 'Una forma de medir la pobreza que mira mucho más que el dinero.',

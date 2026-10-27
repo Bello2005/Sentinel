@@ -5,12 +5,16 @@ Las contraseñas nunca se guardan: se guarda PBKDF2-HMAC-SHA256 con sal aleatori
 (crow-service/src/cripto.cpp).
 
 Uso (desde sistema-web/ml-service):
-    python -m app.usuarios crear  <usuario> --nombre "Nombre Apellido"   # pide la contraseña sin mostrarla
+    python -m app.usuarios crear  <usuario> --nombre "Nombre Apellido" [--rol admin|colaborador|descarga]
+                                                                          # pide la contraseña sin mostrarla
     python -m app.usuarios clave  <usuario>                               # cambia la contraseña
     python -m app.usuarios listar
     python -m app.usuarios eliminar <usuario>
 
 El nombre es el que queda como responsable en las decisiones de activar o rechazar modelos.
+Roles: admin (todo, incluida la administración y la decisión sobre versiones), colaborador (valida, explora, predice y
+entrena candidatas, pero no las activa) y descarga (solo descarga el modelo). Sin --rol, la cuenta es admin.
+Las solicitudes de acceso que llegan desde /acceso las aprueba un admin en la plataforma (Administración).
 """
 import argparse
 import base64
@@ -64,6 +68,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="accion", required=True)
     c = sub.add_parser("crear"); c.add_argument("usuario"); c.add_argument("--nombre", required=True)
+    c.add_argument("--rol", choices=["admin", "colaborador", "descarga"], default="admin")
     sub.add_parser("clave").add_argument("usuario")
     sub.add_parser("eliminar").add_argument("usuario")
     sub.add_parser("listar")
@@ -73,7 +78,7 @@ def main():
 
     if a.accion == "listar":
         for u in datos["usuarios"]:
-            print(f"{u['usuario']:20} {u['nombre']:30} creado {u['creado']}")
+            print(f"{u['usuario']:20} {u['nombre']:30} {u.get('rol', 'admin'):12} creado {u.get('creado', '')}")
         if not datos["usuarios"]:
             print("No hay usuarios. Cree uno con: python -m app.usuarios crear <usuario> --nombre \"...\"")
         return
@@ -82,7 +87,7 @@ def main():
             sys.exit("Usuario: 3 a 32 caracteres en minúscula (letras, números, punto, guion o guion bajo).")
         if a.usuario in por_usuario:
             sys.exit(f"Ya existe el usuario {a.usuario}. Para cambiar su contraseña: python -m app.usuarios clave {a.usuario}")
-        datos["usuarios"].append({"usuario": a.usuario, "nombre": a.nombre.strip(), "hash": cifrar(pedir_clave()),
+        datos["usuarios"].append({"usuario": a.usuario, "nombre": a.nombre.strip(), "rol": a.rol, "hash": cifrar(pedir_clave()),
                                   "creado": datetime.now().isoformat(timespec="seconds")})
         guardar(datos)
         print(f"Usuario {a.usuario} creado. Crow lo reconoce sin reiniciar.")
@@ -90,6 +95,7 @@ def main():
         if a.usuario not in por_usuario:
             sys.exit(f"No existe el usuario {a.usuario}.")
         por_usuario[a.usuario]["hash"] = cifrar(pedir_clave())
+        por_usuario[a.usuario]["debe_cambiar"] = False
         guardar(datos)
         print("Contraseña actualizada. Las sesiones abiertas de ese usuario siguen vigentes hasta que expiren (8 h).")
     elif a.accion == "eliminar":

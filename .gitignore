@@ -24,3 +24,5 @@ shared/data/versiones/
 .venv/
 # Usuarios de la plataforma (hashes de contraseñas): nunca a git
 shared/config/usuarios.json
+shared/config/solicitudes.json
+shared/config/*.tmp

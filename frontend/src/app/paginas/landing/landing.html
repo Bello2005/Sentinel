@@ -1,50 +1,15 @@
 <a class="saltar" href="#contenido" (click)="ir('contenido', $event)">Saltar al contenido</a>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 
-<!-- Navegación -->
-<header class="nav" [class.compacta]="compacta()">
-  <div class="nav-in">
-    <a class="marca" href="#inicio" (click)="ir('inicio', $event)" aria-label="SENTINEL, inicio">
-      <img src="sentinel.svg" width="32" height="32" alt="" />
-      <span><b>SENTINEL</b><small>Estudio Saber 11 · Chocó</small></span>
-    </a>
-    <nav class="enlaces" aria-label="Secciones del estudio">
-      @for (s of secciones; track s.id) {
-        <a [href]="'#' + s.id" (click)="ir(s.id, $event)" [class.activa]="seccionActiva() === s.id" [attr.aria-current]="seccionActiva() === s.id ? 'true' : null">{{ s.titulo }}</a>
-      }
-      <span class="sep" aria-hidden="true"></span>
-      <a routerLink="/proceso" class="extra"><span class="material-symbols-rounded" aria-hidden="true">auto_stories</span>Cómo lo hicimos</a>
-      <a routerLink="/glosario" class="extra"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span>Glosario</a>
-    </nav>
-    <div class="acciones">
-      <a class="icono glosario" routerLink="/glosario" aria-label="Glosario" title="Glosario"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span></a>
-      <button class="icono" (click)="tema.alternar()" [attr.aria-label]="tema.modo() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
-        <span class="material-symbols-rounded">{{ tema.modo() === 'dark' ? 'light_mode' : 'dark_mode' }}</span></button>
-      @if (sesion.activa()) {
-        <a class="sx-btn primary" routerLink="/centro"><span class="material-symbols-rounded">space_dashboard</span><span class="txt">Ir a la plataforma</span></a>
-      } @else {
-        <a class="sx-btn primary" routerLink="/acceso"><span class="material-symbols-rounded">lock</span><span class="txt">Acceder</span></a>
-      }
-      <button class="icono menu" (click)="menuMovil.set(!menuMovil())" [attr.aria-expanded]="menuMovil()" aria-controls="menu-movil" aria-label="Menú de secciones">
-        <span class="material-symbols-rounded">{{ menuMovil() ? 'close' : 'menu' }}</span></button>
-    </div>
-  </div>
-  <div class="progreso" [style.transform]="'scaleX(' + progreso() + ')'" aria-hidden="true"></div>
-  @if (menuMovil()) {
-    <nav id="menu-movil" class="menu-movil" aria-label="Secciones">
-      @for (s of secciones; track s.id) { <a [href]="'#' + s.id" (click)="ir(s.id, $event)">{{ s.titulo }}</a> }
-      <a routerLink="/proceso" class="extra"><span class="material-symbols-rounded" aria-hidden="true">auto_stories</span>Cómo lo hicimos</a>
-      <a routerLink="/glosario" class="extra"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span>Glosario</a>
-    </nav>
-  }
-</header>
+<!-- Navegación: la misma cabecera del glosario y del artículo -->
+<sx-cabecera />
 
 <main id="contenido" tabindex="-1">
   <!-- HERO -->
   <section id="inicio" class="hero">
     <div class="hero-texto">
       <span class="eyebrow-chip"><span class="sx-dot pulse"></span>Datos públicos del ICFES · {{ r()?.anios ?? '2010–2022' }}</span>
-      <h1>El Chocó, <span class="grad">último en Saber 11</span> entre 33 departamentos.</h1>
+      <h1>El Chocó, <span class="grad">último en Saber 11</span> entre los 32 departamentos y Bogotá.</h1>
       <p class="precision">Según el puntaje promedio del examen en {{ r()?.anio_ultimo ?? 2022 }}.</p>
       <p class="bajada">
         Revisamos <b>{{ num(r()?.estudiantes ?? 6225605) }}</b> resultados del examen <sx-termino t="saber-11">Saber 11</sx-termino> para entender por qué al Chocó le va peor,
@@ -78,7 +43,7 @@
           }
         </svg>
       } @else { <div class="silueta-esqueleto sx-skeleton"></div> }
-      <div class="flotante f1"><span class="material-symbols-rounded">leaderboard</span><b>{{ r()?.puesto_choco ?? 33 }}/{{ r()?.departamentos ?? 33 }}</b><small>puesto en el país</small></div>
+      <div class="flotante f1"><span class="material-symbols-rounded">leaderboard</span><b>{{ r()?.puesto_choco ?? 33 }}/{{ r()?.departamentos ?? 33 }}</b><small>puesto entre 32 departamentos y Bogotá</small></div>
       <div class="flotante f2"><span class="material-symbols-rounded">trending_down</span><b>{{ num(r()?.brecha_ultimo_anio ?? -45.8, 1) }}</b><small>puntos de diferencia con el país · {{ r()?.anio_ultimo }}</small></div>
       <div class="flotante f3"><span class="material-symbols-rounded">location_on</span><b>{{ r()?.municipios_10_mas_bajo ?? 26 }} de {{ r()?.municipios_con_dato ?? 30 }}</b><small>municipios entre los más bajos del país</small></div>
     </div>
@@ -95,6 +60,16 @@
     <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">star</span>
       <b><sx-contador [valor]="kpisVisibles() ? (r()?.pct_10_mas_alto ?? null) : 0" [decimales]="1" sufijo=" %" /></b><span>llega al grupo de los mejores del país, los 10 de cada 100 más altos</span></div>
   </section>
+
+  <nav class="subnav" aria-label="Secciones del estudio">
+    <div class="subnav-in">
+      @for (s of secciones; track s.id) {
+        <a [href]="'#' + s.id" (click)="ir(s.id, $event)" [class.activa]="seccionActiva() === s.id" [attr.aria-current]="seccionActiva() === s.id ? 'true' : null"
+           [attr.data-seccion]="s.id">{{ s.titulo }}</a>
+      }
+    </div>
+    <div class="progreso" [style.transform]="'scaleX(' + progreso() + ')'" aria-hidden="true"></div>
+  </nav>
 
   @if (datos.error()) {
     <div class="sx-card aviso-error" role="alert"><span class="material-symbols-rounded">cloud_off</span>No se pudieron cargar los datos del estudio. Recargue la página.</div>
@@ -132,7 +107,7 @@
         <span class="num-seccion">02</span>
         <div><div class="eyebrow">Colombia, año a año</div>
           <h2 id="t-pais">Último en 6 de los 7 años medidos</h2>
-          <p>Cada departamento tiene un color según qué tan lejos está del <sx-termino t="promedio">promedio</sx-termino> del país. Presione <b>reproducir</b> para ver los años
+          <p>Cada departamento (y Bogotá, que se cuenta aparte) tiene un color según qué tan lejos está del <sx-termino t="promedio">promedio</sx-termino> del país. Presione <b>reproducir</b> para ver los años
              de 2014 a 2022: los puestos cambian, pero el Chocó sigue al fondo. Solo en 2016 Vaupés quedó más abajo.</p></div>
       </div>
       <div class="panel" sxRevelar><sx-mapa-pais [e]="e" /></div>
@@ -157,7 +132,7 @@
         <div class="panel">
           <h3>La distancia crece hacia arriba</h3>
           @if (distribucion(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Puntaje por percentil en el Chocó y el resto del país" /> }
-          <p class="nota">Entre los de más abajo (<sx-termino t="percentil">percentil</sx-termino> 5) la diferencia es de {{ num(e.distribucion.resto[0] - e.distribucion.choco[0], 0) }} puntos; en la mitad de la fila (<sx-termino t="mediana">mediana</sx-termino>), de {{ num(e.distribucion.resto[9] - e.distribucion.choco[9], 0) }}.</p>
+          <p class="nota"><span>Entre los de más abajo (<sx-termino t="percentil">percentil</sx-termino> 5) la diferencia es de {{ num(e.distribucion.resto[0] - e.distribucion.choco[0], 0) }} puntos; en la mitad de la fila (<sx-termino t="mediana">mediana</sx-termino>), de {{ num(e.distribucion.resto[9] - e.distribucion.choco[9], 0) }}.</span></p>
         </div>
       </div>
     </section>
@@ -182,7 +157,7 @@
           <div class="cifra">{{ num(corrPobreza(), 2) }}</div>
           <p>es la <sx-termino t="correlacion">correlación</sx-termino> entre pobreza y puntaje en los municipios del Chocó: donde hay más pobreza, el puntaje suele ser más bajo.
              De todo lo que rodea al estudiante, es lo que más se parece al mapa del examen.</p>
-          <p class="nota">Que dos cosas vayan juntas no prueba que una cause la otra (<sx-termino t="causa">asociación no es causa</sx-termino>). Cada punto es el promedio de un municipio.</p>
+          <p class="nota"><span>Que dos cosas vayan juntas no prueba que una cause la otra (<sx-termino t="causa">asociación no es causa</sx-termino>). Cada punto es el promedio de un municipio.</span></p>
         </div>
       </div>
     </section>
@@ -241,7 +216,7 @@
             <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">school</span><div><b>Profesores con <sx-termino t="formacion-docente">posgrado</sx-termino></b><small>≈ −8 puntos: cerca de 20 de cada 100 en el Chocó, frente a unos 60 en Nariño.</small></div></li>
             <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">schedule</span><div><b>Estudiantes mayores para su grado (<sx-termino t="extraedad">extraedad</sx-termino>)</b><small>≈ −5 puntos.</small></div></li>
           </ol>
-          <p class="nota">Medir mejor la casa (libros, comida, si el estudiante trabaja) casi no cambia la diferencia: el problema no está solo dentro de la casa.</p>
+          <p class="nota"><span>Medir mejor la casa (libros, comida, si el estudiante trabaja) casi no cambia la diferencia: el problema no está solo dentro de la casa.</span></p>
         </div>
       </div>
     </section>
@@ -310,7 +285,7 @@
         <div class="panel">
           <h3>¿Cuánto se equivoca? Probado con años pasados</h3>
           @if (modelo(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Error del modelo frente a reglas simples" /> }
-          <p class="nota">Para cada año se calculó el resultado usando solo los años anteriores, y se comparó con lo que pasó de verdad (<sx-termino t="validacion-temporal">prueba con el pasado</sx-termino>). Más bajo es mejor.</p>
+          <p class="nota"><span>Para cada año se calculó el resultado usando solo los años anteriores, y se comparó con lo que pasó de verdad (<sx-termino t="validacion-temporal">prueba con el pasado</sx-termino>). Más bajo es mejor.</span></p>
         </div>
         <div class="panel">
           <h3>Una receta que se puede leer</h3>
@@ -319,7 +294,7 @@
               <li><span>{{ c.nombre }}</span><span class="barra"><span [style.width.%]="abs(c.valor) * 100" [class.neg]="c.valor < 0"></span></span><b>{{ num(c.valor, 3) }}</b></li>
             }
           </ul>
-          <p class="nota">El cálculo mezcla la historia de cada municipio o colegio con estos pesos. No inventa subidas ni bajadas para todo el país.</p>
+          <p class="nota"><span>El cálculo mezcla la historia de cada municipio o colegio con estos pesos. No inventa subidas ni bajadas para todo el país.</span></p>
         </div>
       </div>
       <ol class="pipeline" sxRevelar aria-label="Flujo de gobierno del modelo">

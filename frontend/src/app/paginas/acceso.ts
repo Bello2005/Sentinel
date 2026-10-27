@@ -1,8 +1,10 @@
-// ACCESO: la puerta a la plataforma. Usuario y contraseña; la sesión es una cookie HttpOnly que pone Crow.
+// ACCESO: la puerta a la plataforma. Usuario y contraseña (la sesión es una cookie HttpOnly que pone Crow) o, para quien
+// no tiene cuenta, una solicitud de acceso con sus motivos que revisa un administrador.
 import { Component, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
+import { Cuentas, TipoSolicitud } from '../core/cuentas';
 import { Sesion } from '../core/sesion';
 import { Tema } from '../core/tema';
 
@@ -39,6 +41,7 @@ import { Tema } from '../core/tema';
           <button class="icono" type="button" (click)="tema.alternar()" [attr.aria-label]="tema.modo() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
             <span class="material-symbols-rounded">{{ tema.modo() === 'dark' ? 'light_mode' : 'dark_mode' }}</span></button>
         </div>
+        @if (modo() === 'entrar') {
         <form class="tarjeta" (ngSubmit)="entrar()" novalidate aria-labelledby="titulo-acceso">
           <span class="candado" aria-hidden="true"><span class="material-symbols-rounded">lock</span></span>
           <h2 id="titulo-acceso">Acceso a la plataforma</h2>
@@ -75,9 +78,69 @@ import { Tema } from '../core/tema';
             @if (enviando()) { <span class="giro material-symbols-rounded" aria-hidden="true">progress_activity</span>Verificando… }
             @else { Iniciar sesión <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span> }
           </button>
+          <div class="separador"><span>¿No tiene cuenta?</span></div>
+          <button class="sx-btn lg secundario" type="button" (click)="cambiarModo('solicitar')">
+            <span class="material-symbols-rounded" aria-hidden="true">person_add</span>Solicitar acceso</button>
           <p class="nota sx-muted"><span class="material-symbols-rounded" aria-hidden="true">info</span>
-            Acceso solo para el equipo autorizado. Las cuentas las crea el administrador de la plataforma.</p>
+            Para colaborar con el modelo o descargarlo. Un administrador revisa cada solicitud.</p>
         </form>
+        } @else if (modo() === 'solicitar') {
+        <form class="tarjeta ancha" (ngSubmit)="solicitar()" novalidate aria-labelledby="titulo-solicitud">
+          <span class="candado" aria-hidden="true"><span class="material-symbols-rounded">person_add</span></span>
+          <h2 id="titulo-solicitud">Solicitar acceso</h2>
+          <p class="sx-muted">Cuéntenos quién es y para qué lo necesita. Un administrador revisará su solicitud.</p>
+          @if (errorSolicitud()) {
+            <div class="aviso error" role="alert"><span class="material-symbols-rounded" aria-hidden="true">error</span>{{ errorSolicitud() }}</div>
+          }
+          <fieldset class="tipos">
+            <legend>¿Qué necesita?</legend>
+            @for (t of tipos; track t.id) {
+              <label class="tipo" [class.sel]="sol.tipo === t.id">
+                <input type="radio" name="tipo" [value]="t.id" [(ngModel)]="sol.tipo" />
+                <span class="material-symbols-rounded" aria-hidden="true">{{ t.icono }}</span>
+                <span><b>{{ t.titulo }}</b><small>{{ t.texto }}</small></span>
+              </label>
+            }
+          </fieldset>
+          <div class="dos-campos">
+            <label class="campo"><span>Nombre completo</span>
+              <div class="entrada"><span class="material-symbols-rounded" aria-hidden="true">badge</span>
+                <input name="nombre" [(ngModel)]="sol.nombre" autocomplete="name" maxlength="80" required aria-label="Nombre completo" /></div></label>
+            <label class="campo"><span>Correo</span>
+              <div class="entrada"><span class="material-symbols-rounded" aria-hidden="true">mail</span>
+                <input name="correo" type="email" [(ngModel)]="sol.correo" autocomplete="email" maxlength="120" required aria-label="Correo" /></div></label>
+          </div>
+          <label class="campo"><span>Organización <small>(opcional)</small></span>
+            <div class="entrada"><span class="material-symbols-rounded" aria-hidden="true">apartment</span>
+              <input name="organizacion" [(ngModel)]="sol.organizacion" autocomplete="organization" maxlength="120" placeholder="Universidad, secretaría, colegio…" aria-label="Organización" /></div></label>
+          <label class="campo"><span>¿Por qué necesita el acceso?</span>
+            <textarea name="motivo" [(ngModel)]="sol.motivo" rows="5" maxlength="1500" required aria-label="Motivo de la solicitud" aria-describedby="ayuda-motivo"
+                      placeholder="Por ejemplo: soy docente de la UTCH y quiero probar el modelo con los datos de 2023 de mi secretaría."></textarea>
+            <small id="ayuda-motivo" class="contador" [class.ok]="sol.motivo.trim().length >= 30">
+              {{ sol.motivo.trim().length < 30 ? 'Mínimo 30 caracteres · faltan ' + (30 - sol.motivo.trim().length) : sol.motivo.length + ' / 1500' }}</small>
+          </label>
+          <!-- Campo trampa: invisible para las personas; si un robot lo llena, la solicitud se descarta -->
+          <div class="trampa" aria-hidden="true"><input name="sitio_web" [(ngModel)]="sol.sitio_web" tabindex="-1" autocomplete="off" /></div>
+          <button class="sx-btn primary lg entrar" type="submit" [disabled]="enviando() || !solicitudLista()">
+            @if (enviando()) { <span class="giro material-symbols-rounded" aria-hidden="true">progress_activity</span>Enviando… }
+            @else { Enviar solicitud <span class="material-symbols-rounded" aria-hidden="true">send</span> }
+          </button>
+          <button class="enlace" type="button" (click)="cambiarModo('entrar')"><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>Ya tengo cuenta: iniciar sesión</button>
+        </form>
+        } @else {
+        <div class="tarjeta enviada" role="status" aria-live="polite">
+          <span class="candado ok" aria-hidden="true"><span class="material-symbols-rounded">mark_email_read</span></span>
+          <h2>Recibimos su solicitud</h2>
+          <p class="sx-muted">Gracias, {{ sol.nombre.split(' ')[0] }}. Un administrador la revisará. Si la aprueba, el equipo le escribirá a
+            <b>{{ sol.correo }}</b> con su usuario y una contraseña temporal, que deberá cambiar la primera vez que entre.</p>
+          <ol class="pasos-sol">
+            <li class="hecho"><span class="material-symbols-rounded" aria-hidden="true">check</span>Solicitud enviada</li>
+            <li><span class="material-symbols-rounded" aria-hidden="true">hourglass_top</span>Revisión del administrador</li>
+            <li><span class="material-symbols-rounded" aria-hidden="true">key</span>Usuario y contraseña temporal por correo</li>
+          </ol>
+          <a class="sx-btn lg secundario" routerLink="/"><span class="material-symbols-rounded" aria-hidden="true">insights</span>Volver al estudio</a>
+        </div>
+        }
       </section>
     </div>`,
   styles: `
@@ -140,14 +203,55 @@ import { Tema } from '../core/tema';
     .aviso.info { color: var(--sx-accent); background: color-mix(in srgb, var(--sx-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--sx-accent) 30%, transparent); }
     .aviso span { font-size: 18px; }
     .nota { display: flex; gap: 6px; font-size: 12px; margin: 0; } .nota span { font-size: 16px; }
-    @media (max-width: 900px) { .marco { grid-template-columns: 1fr; } .historia { display: none; } .formulario { padding: 20px 16px; } .tarjeta { padding: 26px 20px; } }`,
+    .tarjeta.ancha { width: min(560px, 100%); }
+    .separador { display: flex; align-items: center; gap: 10px; color: var(--sx-faint); font-size: 12.5px; margin: 4px 0 -4px; }
+    .separador::before, .separador::after { content: ''; flex: 1; height: 1px; background: var(--sx-border); }
+    .secundario { justify-content: center; width: 100%; text-decoration: none; }
+    .tipos { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tipos legend { font-size: 13px; font-weight: 600; margin-bottom: 8px; padding: 0; }
+    .tipo { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 14px; border-radius: 14px; border: 1px solid var(--sx-border-strong);
+      background: var(--sx-panel); cursor: pointer; transition: border-color var(--sx-fast), box-shadow var(--sx-fast), background var(--sx-fast); }
+    .tipo input { position: absolute; opacity: 0; pointer-events: none; }
+    .tipo > span:first-of-type { font-size: 22px; color: var(--sx-muted); }
+    .tipo b { display: block; font-size: 14px; } .tipo small { display: block; margin-top: 2px; color: var(--sx-muted); font-size: 12.5px; line-height: 1.45; }
+    .tipo:hover { border-color: var(--sx-accent); }
+    .tipo.sel { border-color: var(--sx-accent); box-shadow: var(--sx-glow); background: color-mix(in srgb, var(--sx-accent) 7%, var(--sx-panel)); }
+    .tipo.sel > span:first-of-type { color: var(--sx-accent); }
+    .tipo:has(input:focus-visible) { outline: 2px solid var(--sx-accent); outline-offset: 2px; }
+    .dos-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .campo small { font-weight: 400; color: var(--sx-faint); }
+    textarea { resize: vertical; min-height: 110px; padding: 12px; border-radius: 12px; background: var(--sx-panel); border: 1px solid var(--sx-border-strong);
+      color: var(--sx-text); font: 15px/1.5 var(--sx-font); outline: none; transition: border-color var(--sx-fast), box-shadow var(--sx-fast); }
+    textarea:focus { border-color: var(--sx-accent); box-shadow: var(--sx-glow); }
+    .contador { align-self: flex-end; font-size: 12px; color: var(--sx-faint); } .contador.ok { color: var(--sx-success); }
+    .trampa { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+    .enlace { align-self: center; display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--sx-muted); font: 500 13.5px var(--sx-font); cursor: pointer; }
+    .enlace:hover { color: var(--sx-text); } .enlace span { font-size: 17px; }
+    .enviada { text-align: left; }
+    .candado.ok { background: linear-gradient(135deg, var(--sx-success), var(--sx-accent)); }
+    .pasos-sol { list-style: none; padding: 0; margin: 4px 0 8px; display: flex; flex-direction: column; gap: 10px; }
+    .pasos-sol li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--sx-muted); }
+    .pasos-sol li span { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; font-size: 16px; border: 1px solid var(--sx-border-strong); }
+    .pasos-sol li.hecho { color: var(--sx-text); } .pasos-sol li.hecho span { background: var(--sx-success); border-color: transparent; color: #fff; }
+    @media (max-width: 900px) { .marco { grid-template-columns: 1fr; } .historia { display: none; } .formulario { padding: 20px 16px; } .tarjeta { padding: 26px 20px; } }
+    @media (max-width: 520px) { .tipos, .dos-campos { grid-template-columns: 1fr; } }`,
 })
 export class Acceso {
   readonly volver = input<string>();
   readonly expirada = input<string>();
+  /** /acceso?solicitar=1 abre directamente el formulario de solicitud */
+  readonly solicitar_ = input<string>(undefined, { alias: 'solicitar' });
   protected tema = inject(Tema);
   private sesion = inject(Sesion);
   private router = inject(Router);
+  private cuentas = inject(Cuentas);
+  protected modo = signal<'entrar' | 'solicitar' | 'enviada'>('entrar');
+  protected errorSolicitud = signal<string | null>(null);
+  protected sol = { nombre: '', correo: '', organizacion: '', tipo: 'colaborador' as TipoSolicitud, motivo: '', sitio_web: '' };
+  protected tipos = [
+    { id: 'colaborador' as const, icono: 'handshake', titulo: 'Colaborar', texto: 'Probar datos nuevos, entrenar versiones candidatas y proponer mejoras.' },
+    { id: 'descarga' as const, icono: 'download', titulo: 'Descargar el modelo', texto: 'Solo obtener el modelo y su ficha para usarlo por su cuenta.' },
+  ];
   protected usuario = '';
   protected clave = '';
   protected ver = signal(false);
@@ -158,11 +262,35 @@ export class Acceso {
   constructor() {
     // Con sesión vigente no tiene sentido pedir la clave otra vez
     this.sesion.verificar().then(ok => { if (ok) this.router.navigateByUrl(this.destino()); });
+    queueMicrotask(() => { if (this.solicitar_()) this.modo.set('solicitar'); });
   }
 
+  /** Volver a donde iba (solo rutas internas); con clave temporal, primero a cambiarla; si no, la página de su rol */
   private destino() {
     const v = this.volver();
-    return v && v.startsWith('/') && !v.startsWith('//') && v !== '/acceso' ? v : '/centro';  // solo rutas internas
+    if (this.sesion.usuario()?.debe_cambiar) return '/cuenta/clave';
+    return v && v.startsWith('/') && !v.startsWith('//') && v !== '/acceso' ? v : this.sesion.inicio();
+  }
+
+  cambiarModo(m: 'entrar' | 'solicitar') { this.modo.set(m); this.error.set(null); this.errorSolicitud.set(null); }
+
+  protected solicitudLista() {
+    const s = this.sol;
+    return s.nombre.trim().length >= 3 && /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(s.correo.trim()) && s.motivo.trim().length >= 30;
+  }
+
+  async solicitar() {
+    if (!this.solicitudLista()) return;
+    this.enviando.set(true);
+    this.errorSolicitud.set(null);
+    try {
+      await this.cuentas.solicitar({ ...this.sol, nombre: this.sol.nombre.trim(), correo: this.sol.correo.trim(), organizacion: this.sol.organizacion.trim(), motivo: this.sol.motivo.trim() });
+      this.modo.set('enviada');
+    } catch (e) {
+      this.errorSolicitud.set((e as Error).message);
+    } finally {
+      this.enviando.set(false);
+    }
   }
 
   async entrar() {

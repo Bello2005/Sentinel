@@ -1,6 +1,6 @@
-// Autenticación de la plataforma: usuarios de shared/config/usuarios.json (claves PBKDF2), sesiones en memoria con
-// cookie HttpOnly y límite de intentos por IP. La landing pública y sus datos no la necesitan; toda la API sí,
-// salvo /api/salud y /api/auth/login.
+// Autenticación y permisos: sesiones en memoria con cookie HttpOnly, límite de intentos por IP y control por rol.
+// Las cuentas viven en Cuentas (cuentas.h). La landing pública y sus datos no la necesitan; toda la API sí, salvo
+// /api/salud y /api/auth/* (iniciar y cerrar sesión, consultar la sesión y solicitar acceso).
 #pragma once
 
 #include <chrono>
@@ -12,35 +12,34 @@
 
 #include <crow.h>
 
-struct Usuario {
-    std::string usuario, nombre;
-};
+#include "cuentas.h"
 
 class Sesiones {
 public:
-    explicit Sesiones(std::filesystem::path archivo_usuarios);
+    explicit Sesiones(Cuentas& cuentas);
     // Verifica usuario y clave; si son correctos crea una sesión y devuelve su token
     std::optional<std::string> iniciar(const std::string& usuario, const std::string& clave, Usuario& salida);
     std::optional<Usuario> validar(const std::string& token);
     void cerrar(const std::string& token);
+    void cerrar_de(const std::string& usuario);                     // al eliminar la cuenta o cambiar su rol
+    void actualizar(const std::string& usuario, const Usuario& u);  // al cambiar su clave
     // Límite de intentos: false si la IP superó los fallos permitidos (y cuántos segundos faltan)
     bool permitido(const std::string& ip, int& espera_segundos);
     void registrar_fallo(const std::string& ip);
     void limpiar_fallos(const std::string& ip);
-    size_t usuarios_registrados() const;
 
     static constexpr std::chrono::hours DURACION{8};
 
 private:
     struct Sesion { Usuario usuario; std::chrono::steady_clock::time_point expira; };
     struct Intentos { int fallos = 0; std::chrono::steady_clock::time_point desde; };
-    std::filesystem::path archivo_;
+    Cuentas& cuentas_;
     std::mutex mutex_;
     std::map<std::string, Sesion> sesiones_;
     std::map<std::string, Intentos> intentos_;
 };
 
-// Middleware de Crow: deja pasar lo público y exige sesión válida en el resto de /api
+// Middleware de Crow: deja pasar lo público, exige sesión válida en el resto de /api y aplica los permisos del rol
 struct Autenticacion {
     struct context { std::optional<Usuario> usuario; };
     Sesiones* sesiones = nullptr;
@@ -51,3 +50,5 @@ struct Autenticacion {
 std::string leer_cookie(const crow::request& req, const std::string& nombre);
 std::string ip_cliente(const crow::request& req);  // X-Real-IP solo si la conexión viene de Nginx local
 std::string cookie_sesion(const crow::request& req, const std::string& token, int max_age);
+// ¿Puede este usuario usar esta ruta? (quien debe cambiar su clave solo puede hacer eso)
+bool permitido_para(const Usuario& u, const crow::request& req);

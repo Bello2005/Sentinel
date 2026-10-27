@@ -23,7 +23,7 @@ const ALTO_FILA = 26;
 
     <div class="cuerpo">
       <div class="lienzo" (mouseleave)="hover.set(null)">
-        <svg [attr.viewBox]="e().departamentos.mapa.viewBox" role="img" [attr.aria-label]="'Colombia por departamento en ' + anio() + '. El Chocó es el último.'">
+        <svg [attr.viewBox]="e().departamentos.mapa.viewBox" role="img" [attr.aria-label]="'Colombia por departamento y Bogotá en ' + anio() + '. El Chocó es el último.'">
           @for (t of trazos(); track t.cod) {
             <path [attr.d]="t.d" [style.fill]="t.color" [class.choco]="t.cod === '27'" [class.hover]="hover() === t.cod"
                   (mouseenter)="hover.set(t.cod)" />
@@ -38,7 +38,7 @@ const ALTO_FILA = 26;
         <div class="leyenda" aria-hidden="true"><span>por debajo del país</span><i></i><span>por encima</span></div>
       </div>
 
-      <div class="carrera" role="list" [attr.aria-label]="'Ranking de departamentos en ' + anio()" [style.height.px]="filas().length * alto">
+      <div class="carrera" role="list" [attr.aria-label]="'Ranking de los departamentos y Bogotá en ' + anio()" [style.height.px]="filas().length * alto">
         @for (f of filas(); track f.nombre) {
           <div class="fila" role="listitem" [class.choco]="f.cod === '27'" [class.hover]="hover() === f.cod"
                [style.transform]="'translateY(' + f.puesto * alto + 'px)'" (mouseenter)="hover.set(f.cod)" (mouseleave)="hover.set(null)">

@@ -189,3 +189,24 @@ a { color: var(--sx-accent); }
                          transition-delay: calc(var(--sx-r-i, 0) * 90ms); }
 .sx-revelar.sx-visible .sx-r-hijo { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { .sx-revelar, .sx-revelar .sx-r-hijo { opacity: 1; transform: none; transition: none; } }
+
+// --- Vista previa de los términos del glosario (TerminoEnlace la agrega a <body>) -------------------------------
+.sx-termino-prev {
+  position: fixed; z-index: 1000; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 13px;
+  border-radius: 14px; background: var(--sx-card); border: 1px solid var(--sx-border-strong); box-shadow: var(--sx-shadow-lift);
+  color: var(--sx-text); font: 400 14px/1.5 var(--sx-font); letter-spacing: 0; text-align: left; pointer-events: none;
+  animation: sx-prev-abajo var(--sx-med) var(--sx-ease) both;
+  b { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 650; }
+  b .material-symbols-rounded { font-size: 19px; color: var(--sx-accent); }
+  p { margin: 0; color: var(--sx-muted); }
+  small { color: var(--sx-accent); font-size: 12px; font-weight: 600; }
+  // Piquito que apunta a la palabra
+  &::before { content: ''; position: absolute; left: var(--flecha, 50%); width: 10px; height: 10px; margin-left: -5px; background: var(--sx-card);
+    border: 1px solid var(--sx-border-strong); transform: rotate(45deg); }
+  &.abajo::before { top: -6px; border-right: 0; border-bottom: 0; }
+  &.arriba { animation-name: sx-prev-arriba; }
+  &.arriba::before { bottom: -6px; border-left: 0; border-top: 0; }
+}
+@keyframes sx-prev-abajo { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes sx-prev-arriba { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .sx-termino-prev { animation: none; } }

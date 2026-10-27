@@ -11,6 +11,7 @@ import { Tema } from '../../core/tema';
 import { Grafica } from '../../shared/grafica';
 import { Contador } from '../../shared/ui';
 import { TerminoEnlace } from '../glosario/termino';
+import { Cabecera } from '../publico/cabecera';
 import { DatosEstudio, Estudio, pearson } from './datos';
 import { MapaChoco } from './mapa-choco';
 import { MapaPais } from './mapa-pais';
@@ -34,7 +35,7 @@ const ETIQUETAS_PASO = ['Diferencia inicial', '+ La casa', '+ Tipo de colegio', 
 
 @Component({
   selector: 'sx-landing',
-  imports: [RouterLink, Grafica, Contador, Revelar, MapaChoco, MapaPais, Unidades, TerminoEnlace],
+  imports: [RouterLink, Cabecera, Grafica, Contador, Revelar, MapaChoco, MapaPais, Unidades, TerminoEnlace],
   templateUrl: './landing.html',
   styleUrl: './landing.scss',
   host: { '(window:scroll)': 'alDesplazar()' },
@@ -50,8 +51,6 @@ export class Landing {
 
   protected progreso = signal(0);
   protected seccionActiva = signal('');
-  protected compacta = signal(false);
-  protected menuMovil = signal(false);
   protected kpisVisibles = signal(false);
   protected unidadesVisibles = signal(false);
   protected modoEvolucion = signal<ModoEvolucion>('puntaje');
@@ -76,16 +75,21 @@ export class Landing {
       const id = fragmento();
       if (id && this.e()) setTimeout(() => this.ir(id), 120);
     });
+    // La pestaña de la sección activa siempre queda a la vista en la barra de secciones (en celular se desplaza)
+    effect(() => {
+      const id = this.seccionActiva();
+      const barra = document.querySelector<HTMLElement>('.subnav-in');
+      const chip = barra?.querySelector<HTMLElement>(`[data-seccion="${id}"]`);
+      if (barra && chip) barra.scrollTo({ left: chip.offsetLeft - barra.clientWidth / 2 + chip.clientWidth / 2 });
+    });
   }
 
   alDesplazar() {
     const h = document.documentElement;
     this.progreso.set(h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight));
-    this.compacta.set(h.scrollTop > 24);
   }
   ir(id: string, ev?: Event) {
     ev?.preventDefault();
-    this.menuMovil.set(false);
     document.getElementById(id)?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   }
 

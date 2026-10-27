@@ -1,48 +1,38 @@
 #include "autenticacion.h"
 
-#include <fstream>
-#include <nlohmann/json.hpp>
-
 #include "cripto.h"
 
-using json = nlohmann::json;
 using reloj = std::chrono::steady_clock;
 
 namespace {
 constexpr int MAX_FALLOS = 5;
 constexpr auto VENTANA = std::chrono::minutes(15);
-// Clave ficticia para gastar el mismo tiempo cuando el usuario no existe (no revela qué usuarios hay)
-const std::string HASH_FICTICIO = "pbkdf2_sha256$210000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+bool empieza(const std::string& s, const char* prefijo) { return s.rfind(prefijo, 0) == 0; }
 }  // namespace
 
-Sesiones::Sesiones(std::filesystem::path archivo) : archivo_(std::move(archivo)) {}
-
-size_t Sesiones::usuarios_registrados() const {
-    std::ifstream f(archivo_);
-    if (!f) return 0;
-    try { return json::parse(f).value("usuarios", json::array()).size(); } catch (...) { return 0; }
-}
+Sesiones::Sesiones(Cuentas& cuentas) : cuentas_(cuentas) {}
 
 std::optional<std::string> Sesiones::iniciar(const std::string& usuario, const std::string& clave, Usuario& salida) {
-    // Se relee el archivo en cada intento: crear o borrar usuarios no exige reiniciar el servidor
-    json datos = json::object();
-    if (std::ifstream f(archivo_); f) {
-        try { datos = json::parse(f); } catch (...) {}
-    }
-    // Se recorre el arreglo dentro de `datos` (no una copia): `encontrado` apunta a un elemento que sigue vivo
-    const json* encontrado = nullptr;
-    if (datos.contains("usuarios") && datos["usuarios"].is_array())
-        for (const auto& u : datos["usuarios"])
-            if (u.is_object() && u.value("usuario", "") == usuario) encontrado = &u;
-    const bool ok = cripto::verificar_clave(clave, encontrado ? encontrado->value("hash", "") : HASH_FICTICIO);
-    if (!encontrado || !ok) return std::nullopt;
-    salida = {usuario, encontrado->value("nombre", usuario)};
+    // Las cuentas se releen en cada intento: crear o borrar usuarios no exige reiniciar el servidor
+    auto u = cuentas_.verificar(usuario, clave);
+    if (!u) return std::nullopt;
+    salida = *u;
     const std::string token = cripto::hex(cripto::aleatorio(32));
     std::lock_guard<std::mutex> lock(mutex_);
     sesiones_[token] = {salida, reloj::now() + DURACION};
     // Limpieza de sesiones vencidas
     for (auto it = sesiones_.begin(); it != sesiones_.end();) it = it->second.expira < reloj::now() ? sesiones_.erase(it) : std::next(it);
     return token;
+}
+
+void Sesiones::cerrar_de(const std::string& usuario) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto it = sesiones_.begin(); it != sesiones_.end();) it = it->second.usuario.usuario == usuario ? sesiones_.erase(it) : std::next(it);
+}
+
+void Sesiones::actualizar(const std::string& usuario, const Usuario& u) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& [_, s] : sesiones_) if (s.usuario.usuario == usuario) s.usuario = u;
 }
 
 std::optional<Usuario> Sesiones::validar(const std::string& token) {
@@ -115,9 +105,27 @@ void Autenticacion::before_handle(crow::request& req, crow::response& res, conte
     if (req.method == crow::HTTPMethod::Options) return;                      // preflight CORS en desarrollo
     if (sesiones) ctx.usuario = sesiones->validar(leer_cookie(req, "sx_sesion"));
     if (!ctx.usuario) {
-        res.code = 401;
         res.set_header("Content-Type", "application/json; charset=utf-8");
+        res.code = 401;
         res.body = R"({"error":"Inicie sesión para usar la plataforma."})";
         res.end();
+    } else if (!permitido_para(*ctx.usuario, req)) {
+        res.set_header("Content-Type", "application/json; charset=utf-8");
+        res.code = 403;
+        res.body = ctx.usuario->debe_cambiar ? R"({"error":"Cambie su contraseña temporal para continuar.","codigo":"debe_cambiar"})"
+                                             : R"({"error":"Su cuenta no tiene permiso para esto.","codigo":"sin_permiso"})";
+        res.end();
     }
+}
+
+bool permitido_para(const Usuario& u, const crow::request& req) {
+    const std::string& url = req.url;
+    if (empieza(url, "/api/cuenta/")) return true;               // su propia cuenta: cualquier rol
+    if (u.debe_cambiar) return false;                             // con clave temporal, solo puede cambiarla
+    if (u.rol == "admin") return true;
+    if (empieza(url, "/api/admin/")) return false;
+    if (empieza(url, "/api/descargas")) return true;              // descargar el modelo: cualquier rol
+    if (u.rol == "descarga") return url == "/api/modelo" && req.method == crow::HTTPMethod::Get;
+    if (u.rol == "colaborador") return url != "/api/modelo/decision";  // propone candidatas, no las activa
+    return false;
 }

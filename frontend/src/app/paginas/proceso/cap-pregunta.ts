@@ -18,7 +18,7 @@ import { CAPITULOS } from './capitulos';
 
     <p class="entrada">Cada año, más de medio millón de jóvenes en Colombia presentan el <sx-termino t="saber-11">Saber 11</sx-termino>, el examen
       que se hace al terminar el colegio. Y año tras año, un departamento aparece al final de la lista: el Chocó.</p>
-    <p>En 2022 fue el último de 33. Sus estudiantes sacaron, en promedio, <b>45,8 puntos menos</b> que los del resto del país, en un examen que va
+    <p>En 2022 quedó en el último lugar entre los 32 departamentos y Bogotá. Sus estudiantes sacaron, en promedio, <b>45,8 puntos menos</b> que los del resto del país, en un examen que va
       de 0 a 500. Esa distancia es lo que en este estudio llamamos la <sx-termino t="brecha">brecha</sx-termino>.</p>
     <p>Un número así deja muchas preguntas. ¿Siempre ha sido así? ¿Es por la pobreza? ¿Por los colegios? ¿Por los profesores? ¿Y se podría saber,
       antes de que pase, cómo le irá a cada municipio el año siguiente?</p>

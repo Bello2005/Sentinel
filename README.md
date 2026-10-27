@@ -25,7 +25,7 @@
 1. [Qué es SENTINEL](#qué-es-sentinel)
 2. [Funcionalidades](#funcionalidades)
    - [Landing pública con los resultados del estudio](#landing-pública-con-los-resultados-del-estudio)
-   - [Acceso y usuarios](#acceso-y-usuarios)
+   - [Acceso, roles y solicitudes](#acceso-roles-y-solicitudes)
 3. [Arquitectura](#arquitectura)
 4. [Stack tecnológico](#stack-tecnológico)
 5. [Estructura del repositorio](#estructura-del-repositorio)
@@ -125,25 +125,40 @@ En la landing y en el artículo, las palabras difíciles usan `<sx-termino t="id
 el cursor o con el teclado y, al hacer clic, llevan a su definición; "Volver" regresa al mismo punto de la página.
 Los términos viven en `frontend/src/app/paginas/glosario/terminos.ts`.
 
-### Acceso y usuarios
+### Acceso, roles y solicitudes
 
-Todo lo que no es la landing (Command Center, Validación, Predicciones, Laboratorio, Decisión, Historial…) está
-detrás de un **inicio de sesión** en `/acceso`. Al entrar sin sesión a una ruta protegida, la interfaz lleva al acceso
-y, tras iniciar sesión, devuelve a la página pedida.
+Todo lo que no es la landing, el artículo o el glosario está detrás de un **inicio de sesión** en `/acceso`. Hay tres
+roles, y los permisos los aplica Crow en el servidor (la interfaz solo oculta lo que no corresponde):
 
-- Los usuarios viven en `shared/config/usuarios.json` (fuera de git, permisos `0600`) con la contraseña derivada con
-  **PBKDF2-HMAC-SHA256** (210 000 iteraciones y sal aleatoria). No hay registro público: las cuentas las crea el
-  administrador.
-- Crow verifica la contraseña en C++ y entrega una cookie `sx_sesion` **HttpOnly**, `SameSite=Strict` y `Secure` detrás
-  de HTTPS, válida 8 horas. JavaScript nunca ve la credencial.
-- Tras 5 intentos fallidos en 15 minutos desde una IP, el acceso responde 429.
-- Toda ruta `/api/*` exige sesión, salvo `/api/salud` y `/api/auth/*`. La landing y `estudio.json` son públicos.
+| Rol | Puede | No puede |
+|---|---|---|
+| **admin** | Todo: validar, explorar, predecir, entrenar, **activar o rechazar versiones** y administrar cuentas | — |
+| **colaborador** | Validar, explorar, predecir, entrenar versiones candidatas, comparar, ver el historial y descargar | Activar versiones ni administrar |
+| **descarga** | Descargar el modelo activo y su ficha (`/descargas`) | Nada más de la plataforma |
 
-Administración de cuentas (pide la contraseña sin mostrarla; mínimo 10 caracteres):
+**Solicitar acceso.** Quien no tiene cuenta usa «Solicitar acceso» en `/acceso`: nombre, correo, organización, tipo
+(colaborar o descargar) y por qué lo necesita. La solicitud queda pendiente en `shared/config/solicitudes.json`
+(fuera de git). Hay un campo trampa contra robots, un máximo de 5 intentos por hora por IP y no se aceptan dos
+solicitudes pendientes con el mismo correo.
+
+**Aprobar.** Un admin entra a **Administración** (`/admin`), revisa el motivo, elige el usuario y el rol y aprueba. La
+plataforma muestra **una sola vez** una contraseña temporal y un mensaje listo para copiar y enviar a la persona por un
+canal privado. Al entrar, la persona debe cambiarla (`/cuenta/clave`); hasta entonces la API solo le permite eso.
+En la misma vista el admin crea cuentas directamente, cambia roles (cierra la sesión de esa persona), restablece
+contraseñas y elimina cuentas. Nadie puede cambiar su propio rol ni eliminarse, y siempre queda al menos un admin.
+
+- Las contraseñas se guardan con **PBKDF2-HMAC-SHA256** (210 000 iteraciones y sal aleatoria) en
+  `shared/config/usuarios.json` (fuera de git, permisos `0600`, escritura atómica).
+- Crow entrega una cookie `sx_sesion` **HttpOnly**, `SameSite=Strict` y `Secure` detrás de HTTPS, válida 8 horas.
+- Tras 5 contraseñas equivocadas en 15 minutos desde una IP, el acceso responde 429.
+- Las cuentas creadas antes de que existieran los roles cuentan como admin.
+
+**Primer admin** (en el servidor; pide la contraseña sin mostrarla, mínimo 10 caracteres):
 
 ```bash
 cd ml-service
-../.venv/bin/python -m app.usuarios crear ana --nombre "Ana Mosquera"
+../.venv/bin/python -m app.usuarios crear ana --nombre "Ana Mosquera"            # admin por defecto
+../.venv/bin/python -m app.usuarios crear luis --nombre "Luis Palacios" --rol colaborador
 ../.venv/bin/python -m app.usuarios clave ana       # cambiar contraseña
 ../.venv/bin/python -m app.usuarios listar
 ../.venv/bin/python -m app.usuarios eliminar ana
@@ -420,7 +435,7 @@ systemctl --user restart sentinel      # o: sudo systemctl restart sentinel
 ```
 
 En la primera instalación (o si `shared/config/usuarios.json` no existe) Crow avisa al arrancar que no hay usuarios:
-cree al menos uno con `app.usuarios crear` (ver [Acceso y usuarios](#acceso-y-usuarios)).
+cree al menos uno con `app.usuarios crear` (ver [Acceso y usuarios](#acceso-roles-y-solicitudes)).
 
 > `shared/models/` y `shared/data/` viven en el servidor: las versiones que se entrenan y aprueban allí se conservan
 > entre actualizaciones. Haga copia de `shared/` antes de cambios grandes.
@@ -445,7 +460,7 @@ y borre `shared/models/v2`, `shared/data/versiones`, `shared/data/lotes` y `shar
 
 ## API REST
 
-Base: `/api`. Salvo las rutas marcadas como públicas, todas exigen la cookie de sesión (sin ella responden 401).
+Base: `/api`. Salvo las rutas marcadas como públicas, todas exigen la cookie de sesión (sin ella responden 401) y respetan el rol (403 si no le corresponde).
 Los archivos se envían como `multipart/form-data` en el campo `archivo` (o como cuerpo crudo).
 Los errores devuelven `{"error": "mensaje legible"}`, nunca trazas técnicas.
 
@@ -454,7 +469,12 @@ Los errores devuelven `{"error": "mensaje legible"}`, nunca trazas técnicas.
 | `POST` | `/api/auth/login` | `{"usuario","clave"}` → cookie de sesión | 200 · 401 · 429 |
 | `POST` | `/api/auth/logout` | Cierra la sesión | 200 |
 | `GET` | `/api/auth/sesion` | `{"activa":false}` o `{"activa":true,"usuario","nombre"}` | 200 |
+| `POST` | `/api/auth/solicitud` | Solicitud de acceso `{"nombre","correo","organizacion","tipo","motivo"}` (pública) | 201 · 400 · 409 · 429 |
 | `GET` | `/api/salud` | Estado del servicio y modelo activo (público) | 200 |
+| `POST` | `/api/cuenta/clave` | `{"actual","nueva"}`: cambia la propia contraseña | 200 · 400 |
+| `GET` | `/api/descargas` · `/api/descargas/<archivo>` | Ficha del modelo activo y sus archivos (`modelo.onnx`, `metadata.json`, `ejemplo_entrada.csv`, `LEEME.txt`) | 200 · 404 |
+| `GET` · `POST` | `/api/admin/solicitudes` · `/api/admin/solicitudes/<id>` | Listar; `{"accion":"aprobar"\|"rechazar","rol","usuario","nota"}` (admin) | 200 · 400 · 404 · 409 |
+| `GET` · `POST` | `/api/admin/usuarios` · `/api/admin/usuarios/<usuario>` | Listar y crear; `{"accion":"rol"\|"restablecer"\|"eliminar"}` (admin) | 200 · 201 · 400 · 404 |
 | `GET` | `/api/modelo` | Metadatos del modelo activo y registro de versiones | 200 · 503 sin modelo |
 | `POST` | `/api/validar?modo=prediccion` | Valida un CSV; `modo=entrenamiento` exige `puntaje_real` | 200 · 400 |
 | `POST` | `/api/eda` | EDA automático de cualquier CSV | 200 · 400 |
@@ -642,7 +662,7 @@ Detalle y comandos `curl` en [`pruebas/README.md`](pruebas/README.md).
 ## Seguridad
 
 - La plataforma exige inicio de sesión (PBKDF2, cookie HttpOnly/SameSite=Strict, límite de intentos); ver
-  [Acceso y usuarios](#acceso-y-usuarios). Las cuentas nunca se guardan en git.
+  [Acceso y usuarios](#acceso-roles-y-solicitudes). Las cuentas nunca se guardan en git.
 - La decisión sobre una versión la firma el usuario autenticado: el cliente no puede enviar otro responsable.
 - Las predicciones solo se ejecutan después de aprobar la validación; un archivo incompatible responde 409.
 - El texto que escribe el usuario (la justificación) nunca pasa por la línea de comandos: viaja en un archivo JSON.

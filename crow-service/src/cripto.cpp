@@ -131,6 +131,43 @@ Bytes desde_base64(const std::string& texto) {
     return b;
 }
 
+std::string a_base64(const Bytes& b) {
+    static const char* t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string s;
+    size_t i = 0;
+    for (; i + 2 < b.size(); i += 3) {
+        const uint32_t v = (uint32_t(b[i]) << 16) | (uint32_t(b[i + 1]) << 8) | b[i + 2];
+        s += t[v >> 18]; s += t[(v >> 12) & 63]; s += t[(v >> 6) & 63]; s += t[v & 63];
+    }
+    if (i + 1 == b.size()) {
+        const uint32_t v = uint32_t(b[i]) << 16;
+        s += t[v >> 18]; s += t[(v >> 12) & 63]; s += "==";
+    } else if (i + 2 == b.size()) {
+        const uint32_t v = (uint32_t(b[i]) << 16) | (uint32_t(b[i + 1]) << 8);
+        s += t[v >> 18]; s += t[(v >> 12) & 63]; s += t[(v >> 6) & 63]; s += '=';
+    }
+    return s;
+}
+
+std::string cifrar_clave(const std::string& clave) {
+    constexpr uint32_t ITERACIONES = 210000;
+    const Bytes sal = aleatorio(16);
+    return "pbkdf2_sha256$" + std::to_string(ITERACIONES) + "$" + a_base64(sal) + "$" + a_base64(pbkdf2_sha256(clave, sal, ITERACIONES, 32));
+}
+
+std::string clave_temporal(size_t largo) {
+    static const std::string letras = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    std::string s;
+    // Se descartan los bytes que sesgarían la distribución (rechazo)
+    while (s.size() < largo)
+        for (uint8_t x : aleatorio(largo * 2))
+            if (x < 256 - 256 % letras.size() && s.size() < largo) s += letras[x % letras.size()];
+    // En grupos de 4 para dictarla o copiarla sin errores: abcd-efgh-...
+    std::string con_guiones;
+    for (size_t i = 0; i < s.size(); ++i) { if (i && i % 4 == 0) con_guiones += '-'; con_guiones += s[i]; }
+    return con_guiones;
+}
+
 bool verificar_clave(const std::string& clave, const std::string& almacenado) {
     std::vector<std::string> partes;
     std::stringstream ss(almacenado);

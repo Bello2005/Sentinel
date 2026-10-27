@@ -9,11 +9,11 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter, map } from 'rxjs';
 
 import { haceCuanto } from '../core/formato';
-import { Sesion } from '../core/sesion';
+import { NOMBRE_ROL, Sesion } from '../core/sesion';
 import { SentinelStore } from '../core/store';
 import { Tema } from '../core/tema';
 import { Estado } from '../shared/ui';
-import { DESTINOS } from './navegacion';
+import { DESTINOS, GRUPOS } from './navegacion';
 import { Paleta } from './paleta';
 
 @Component({
@@ -25,11 +25,11 @@ import { Paleta } from './paleta';
     <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
 
     <nav class="lateral sx-glass" aria-label="Navegación principal">
-      <a class="marca" routerLink="/centro" aria-label="SENTINEL, Command Center">
+      <a class="marca" [routerLink]="sesion.inicio()" aria-label="SENTINEL, inicio de la plataforma">
         <img src="sentinel.svg" width="34" height="34" alt="" />
         <span class="texto"><b>SENTINEL</b><small>Predictive Governance</small></span>
       </a>
-      @for (g of grupos; track g) {
+      @for (g of grupos(); track g) {
         <div class="grupo">{{ g }}</div>
         @for (d of destinosDe(g); track d.ruta) {
           <a class="item" [routerLink]="d.ruta" routerLinkActive="activo" [routerLinkActiveOptions]="{ exact: false }"
@@ -86,8 +86,9 @@ import { Paleta } from './paleta';
             <span class="material-symbols-rounded" aria-hidden="true">expand_more</span>
           </button>
           <mat-menu #menuUsuario="matMenu" xPosition="before">
-            <div class="menu-cab" mat-menu-item disabled><b>{{ u.nombre }}</b><small>&#64;{{ u.usuario }}</small></div>
+            <div class="menu-cab" mat-menu-item disabled><b>{{ u.nombre }}</b><small>&#64;{{ u.usuario }} · {{ nombreRol[u.rol] }}</small></div>
             <a mat-menu-item routerLink="/"><span class="material-symbols-rounded menu-ico">auto_stories</span>Ver el estudio</a>
+            <a mat-menu-item routerLink="/cuenta/clave"><span class="material-symbols-rounded menu-ico">key</span>Cambiar contraseña</a>
             <button mat-menu-item (click)="sesion.cerrar()"><span class="material-symbols-rounded menu-ico">logout</span>Cerrar sesión</button>
           </mat-menu>
         }
@@ -132,19 +133,21 @@ export class Shell {
   protected store = inject(SentinelStore);
   protected tema = inject(Tema);
   protected sesion = inject(Sesion);
+  protected nombreRol = NOMBRE_ROL;
   private router = inject(Router);
   private movil = toSignal(inject(BreakpointObserver).observe('(max-width: 900px)').pipe(map(r => r.matches)), { initialValue: false });
   protected colapsada = signal(false);
   protected contexto = signal(window.innerWidth >= 1400);
   protected paleta = signal(false);
-  protected grupos = ['Operación', 'Gobierno'] as const;
-  protected destinosDe = (g: string) => DESTINOS.filter(d => d.grupo === g);
+  private visibles = computed(() => DESTINOS.filter(d => this.sesion.puede(d.roles)));
+  protected grupos = computed(() => GRUPOS.filter(g => this.visibles().some(d => d.grupo === g)));
+  protected destinosDe = (g: string) => this.visibles().filter(d => d.grupo === g);
   protected hace = haceCuanto;
   private url = toSignal(this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(e => (e as NavigationEnd).urlAfterRedirects)),
                          { initialValue: this.router.url });
   protected actual = computed(() => {
     const ruta = this.url().split('?')[0];
-    return DESTINOS.find(d => d.ruta === ruta) ?? DESTINOS[0];
+    return DESTINOS.find(d => d.ruta === ruta) ?? this.visibles()[0] ?? DESTINOS[0];
   });
 
   constructor() {

@@ -64,7 +64,7 @@ export class Paleta {
   protected activo = signal(0);
 
   private comandos = computed<Comando[]>(() => [
-    ...DESTINOS.map(d => ({ titulo: d.titulo, detalle: d.descripcion, icono: d.icono, grupo: 'Ir a', accion: () => this.router.navigateByUrl(d.ruta) })),
+    ...DESTINOS.filter(d => this.sesion.puede(d.roles)).map(d => ({ titulo: d.titulo, detalle: d.descripcion, icono: d.icono, grupo: 'Ir a', accion: () => this.router.navigateByUrl(d.ruta) })),
     { titulo: 'Cambiar tema', detalle: this.tema.modo() === 'dark' ? 'Pasar a modo claro' : 'Pasar a modo oscuro', icono: 'contrast', grupo: 'Acciones', accion: () => this.tema.alternar() },
     { titulo: 'Ver el estudio', detalle: 'Landing pública con los resultados', icono: 'auto_stories', grupo: 'Acciones', accion: () => this.router.navigateByUrl('/') },
     { titulo: 'Cerrar sesión', detalle: this.sesion.usuario()?.nombre ?? '', icono: 'logout', grupo: 'Acciones', accion: () => this.sesion.cerrar() },
@@ -75,7 +75,8 @@ export class Paleta {
       { titulo: 'Ejecutar EDA', detalle: this.store.archivo()!.name, icono: 'travel_explore', grupo: 'Acciones',
         accion: () => { this.router.navigateByUrl('/observatorio'); this.store.analizar(); } },
     ] : []),
-    ...this.store.candidatas().map(c => ({ titulo: `Revisar ${c.id}`, detalle: 'Candidata pendiente de decisión', icono: 'gavel', grupo: 'Gobierno',
+    { titulo: 'Cambiar contraseña', detalle: 'Su cuenta', icono: 'key', grupo: 'Acciones', accion: () => this.router.navigateByUrl('/cuenta/clave') },
+    ...(this.sesion.esAdmin() ? this.store.candidatas() : []).map(c => ({ titulo: `Revisar ${c.id}`, detalle: 'Candidata pendiente de decisión', icono: 'gavel', grupo: 'Gobierno',
                                            accion: () => this.router.navigate(['/decision'], { queryParams: { v: c.id } }) })),
   ]);
   protected filtrados = computed(() => {

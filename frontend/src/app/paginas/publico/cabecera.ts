@@ -31,7 +31,7 @@ export const VISTAS_PUBLICAS = [
         <div class="acciones">
           <button class="icono" (click)="tema.alternar()" [attr.aria-label]="tema.modo() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
             <span class="material-symbols-rounded">{{ tema.modo() === 'dark' ? 'light_mode' : 'dark_mode' }}</span></button>
-          <a class="sx-btn primary" [routerLink]="sesion.activa() ? '/centro' : '/acceso'">
+          <a class="sx-btn primary" [routerLink]="sesion.activa() ? '/centro' : '/acceso'" [attr.aria-label]="sesion.activa() ? 'Ir a la plataforma' : 'Acceder a la plataforma'">
             <span class="material-symbols-rounded">{{ sesion.activa() ? 'space_dashboard' : 'lock' }}</span><span class="txt">{{ sesion.activa() ? 'Plataforma' : 'Acceder' }}</span></a>
           <button class="icono menu" (click)="menu.set(!menu())" [attr.aria-expanded]="menu()" aria-controls="menu-publico" aria-label="Menú">
             <span class="material-symbols-rounded">{{ menu() ? 'close' : 'menu' }}</span></button>
@@ -67,8 +67,10 @@ export const VISTAS_PUBLICAS = [
     .menu-movil { display: flex; flex-direction: column; padding: 8px 16px 16px; background: var(--sx-glass); backdrop-filter: blur(16px); border-bottom: 1px solid var(--sx-border); }
     .menu-movil a { display: flex; align-items: center; gap: 10px; padding: 14px 8px; color: var(--sx-text); text-decoration: none; border-bottom: 1px solid var(--sx-border); }
     .menu-movil a span { color: var(--sx-accent); }
-    @media (max-width: 860px) { .enlaces { display: none; } .icono.menu { display: grid; } .acciones { margin-left: auto; } }
-    @media (max-width: 520px) { .nav-in { padding: 0 16px; gap: 12px; } .marca small { display: none; } .sx-btn .txt { display: none; } }`,
+    /* Tablet: los tres enlaces siguen visibles con texto; se recorta lo accesorio */
+    @media (max-width: 1000px) { .nav-in { gap: 16px; } .enlaces a { padding: 8px 10px; } .enlaces a span { display: none; } .marca small { display: none; } }
+    @media (max-width: 760px) { .sx-btn .txt { display: none; } .enlaces a { font-size: 13.5px; } }
+    @media (max-width: 600px) { .enlaces { display: none; } .icono.menu { display: grid; } .acciones { margin-left: auto; } .nav-in { padding: 0 16px; gap: 12px; } }`,
 })
 export class Cabecera {
   protected tema = inject(Tema);
