@@ -108,6 +108,23 @@ El script lee `../resultados/`, `../informe/graficas/cifras_graficas.json`, `../
 modelo activo; simplifica los polígonos (Douglas-Peucker) y los proyecta a trayectos SVG para que el navegador no
 tenga que cargar GeoJSON.
 
+### Artículo "Cómo lo hicimos" y glosario
+
+Dos páginas públicas más acompañan a la landing, escritas para que las entienda cualquier persona:
+
+- **`/proceso`**: el proceso completo en 9 capítulos cortos (la pregunta, los datos, la limpieza, la exploración, las
+  causas, el modelo, la plataforma, el gobierno y las conclusiones). Cada capítulo trae un resumen de 30 segundos y
+  figuras animadas paso a paso (con controles y reproducción automática al aparecer, que respeta
+  `prefers-reduced-motion`): la compresión de los datos, la limpieza de filas de ejemplo, la cascada de la brecha, la
+  validación temporal, una calculadora con la fórmula real del modelo y el recorrido de una predicción por la
+  arquitectura. Recuerda qué capítulos ya se leyeron.
+- **`/glosario`**: 46 términos en 5 temas, cada uno con una línea, una explicación y un ejemplo cotidiano. Buscador sin
+  tildes, filtros, letra grande y enlace directo a cada término (`/glosario#brecha`).
+
+En la landing y en el artículo, las palabras difíciles usan `<sx-termino t="id">`: muestran una vista previa al pasar
+el cursor o con el teclado y, al hacer clic, llevan a su definición; "Volver" regresa al mismo punto de la página.
+Los términos viven en `frontend/src/app/paginas/glosario/terminos.ts`.
+
 ### Acceso y usuarios
 
 Todo lo que no es la landing (Command Center, Validación, Predicciones, Laboratorio, Decisión, Historial…) está

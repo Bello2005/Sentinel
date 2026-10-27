@@ -1,7 +1,8 @@
 // LANDING PÚBLICA: los hallazgos del estudio Saber 11 · Chocó contados con datos, mapas y gráficas interactivas.
 // La plataforma (validación, modelo y gobierno) queda detrás del acceso.
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApexOptions } from 'apexcharts';
 
 import { num } from '../../core/formato';
@@ -9,6 +10,7 @@ import { Sesion } from '../../core/sesion';
 import { Tema } from '../../core/tema';
 import { Grafica } from '../../shared/grafica';
 import { Contador } from '../../shared/ui';
+import { TerminoEnlace } from '../glosario/termino';
 import { DatosEstudio, Estudio, pearson } from './datos';
 import { MapaChoco } from './mapa-choco';
 import { MapaPais } from './mapa-pais';
@@ -27,9 +29,12 @@ export const SECCIONES = [
 
 type ModoEvolucion = 'puntaje' | 'z' | 'mat';
 
+// Nombres sencillos para los pasos de la cascada (mismo orden que brecha.pasos)
+const ETIQUETAS_PASO = ['Diferencia inicial', '+ La casa', '+ Tipo de colegio', '+ Compañeros', '+ Datos del colegio', '+ Aislamiento', '+ Municipio', '+ Profesores'];
+
 @Component({
   selector: 'sx-landing',
-  imports: [RouterLink, Grafica, Contador, Revelar, MapaChoco, MapaPais, Unidades],
+  imports: [RouterLink, Grafica, Contador, Revelar, MapaChoco, MapaPais, Unidades, TerminoEnlace],
   templateUrl: './landing.html',
   styleUrl: './landing.scss',
   host: { '(window:scroll)': 'alDesplazar()' },
@@ -64,6 +69,13 @@ export class Landing {
       if (nodos.length === SECCIONES.length) { nodos.forEach(n => obs?.observe(n)); clearInterval(intento); }
     }, 200);
     inject(DestroyRef).onDestroy(() => { obs?.disconnect(); clearInterval(intento); });
+
+    // Enlaces desde otras páginas a una sección (/#hipotesis): baja hasta ella cuando los datos ya están en pantalla
+    const fragmento = toSignal(inject(ActivatedRoute).fragment, { initialValue: null });
+    effect(() => {
+      const id = fragmento();
+      if (id && this.e()) setTimeout(() => this.ir(id), 120);
+    });
   }
 
   alDesplazar() {
@@ -118,16 +130,16 @@ export class Landing {
     return { ...base, chart: { type: 'area' }, stroke: { width: 3, curve: 'smooth' },
       series: [{ name: modo === 'z' ? 'Chocó · puntaje global' : 'Chocó · matemáticas', data: s.choco as number[] }],
       colors: [this.t('danger')], xaxis: { categories: s.anios },
-      yaxis: { max: 0, min: -1.2, tickAmount: 4, title: { text: 'Desviaciones frente al país (0 = promedio)' }, labels: { formatter: (v: number) => num(v, 1) } },
+      yaxis: { max: 0, min: -1.2, tickAmount: 4, title: { text: 'Comparado con el país (0 = promedio del país)' }, labels: { formatter: (v: number) => num(v, 1) } },
       annotations: { yaxis: [{ y: 0, borderColor: this.t('active'), strokeDashArray: 0, label: { text: 'Promedio del país', style: { background: this.t('active'), color: '#04212b' } } }] },
-      tooltip: { y: { formatter: (v: number) => num(v, 2) + ' σ' } } };
+      tooltip: { y: { formatter: (v: number) => num(v, 2) + ' desviaciones' } } };
   }));
 
   protected distribucion = computed<ApexOptions | null>(() => this.conTema(() => {
     const d = this.e()?.distribucion;
     if (!d) return null;
     return { chart: { type: 'area' }, series: [{ name: 'Resto del país', data: d.resto }, { name: 'Chocó', data: d.choco }],
-             colors: [this.t('active'), this.t('danger')], stroke: { width: 3 }, xaxis: { categories: d.percentiles.map(p => `P${p}`), title: { text: 'Percentil dentro de cada grupo' } },
+             colors: [this.t('active'), this.t('danger')], stroke: { width: 3 }, xaxis: { categories: d.percentiles.map(p => `P${p}`), title: { text: 'Lugar en la fila de 100 estudiantes (percentil)' } },
              yaxis: { title: { text: 'Puntaje global' }, min: 140, labels: { formatter: (v: number) => num(v, 0) } },
              fill: { type: 'gradient', gradient: { opacityFrom: 0.3, opacityTo: 0.02 } }, legend: { position: 'top', horizontalAlign: 'left' },
              tooltip: { shared: true, y: { formatter: (v: number) => num(v, 0) + ' pts' } } };
@@ -154,7 +166,7 @@ export class Landing {
              series: [{ name: 'Municipios', data: m.map(x => ({ x: x.ipm!, y: x.puntaje!, nombre: x.nombre })) }] as ApexOptions['series'],
              colors: [this.t('accent')], markers: { size: 7, strokeWidth: 0, fillOpacity: 0.85, hover: { sizeOffset: 3 } },
              states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } },
-             xaxis: { type: 'numeric', min: xMin, max: xMax, tooltip: { enabled: false }, title: { text: 'Pobreza multidimensional (%)' }, tickAmount: (xMax - xMin) / 10, labels: { formatter: (v: string) => num(+v, 0) } },
+             xaxis: { type: 'numeric', min: xMin, max: xMax, tooltip: { enabled: false }, title: { text: 'Personas en pobreza (%)' }, tickAmount: (xMax - xMin) / 10, labels: { formatter: (v: string) => num(+v, 0) } },
              yaxis: { min: yMin, max: yMax, tickAmount: (yMax - yMin) / 10, title: { text: 'Puntaje global' }, labels: { formatter: (v: number) => num(v, 0) } },
              tooltip: { custom: ({ dataPointIndex }: { dataPointIndex: number }) => {
                const x = m[dataPointIndex];
@@ -169,7 +181,7 @@ export class Landing {
     return { chart: { type: 'bar' }, series: [{ name: 'Chocó', data: Object.values(m) }], xaxis: { categories: Object.keys(m), min: -1, max: 0,
              labels: { formatter: (v: string) => num(+v, 1) } }, colors: [this.t('danger')],
              plotOptions: { bar: { horizontal: true, borderRadius: 6, barHeight: '58%' } },
-             dataLabels: { enabled: true, formatter: (v: number) => num(v, 2) + ' σ', style: { fontWeight: 600 } },
+             dataLabels: { enabled: true, formatter: (v: number) => num(v, 2), style: { fontWeight: 600 } },
              tooltip: { y: { formatter: (v: number) => num(v, 2) + ' desviaciones frente al país' } } };
   }));
 
@@ -192,7 +204,7 @@ export class Landing {
     return { chart: { type: 'bar' }, series: [{ name: 'Resto del país', data: mat.map(m => g['Resto del país'][m]) }, { name: 'Chocó', data: mat.map(m => g['Chocó'][m]) }],
              xaxis: { categories: mat, labels: { formatter: (v: string) => num(+v, 2) } }, colors: [this.t('active'), this.t('candidate')],
              plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '70%' } }, legend: { position: 'top', horizontalAlign: 'left' },
-             tooltip: { y: { formatter: (v: number) => (v > 0 ? 'Hombres +' : 'Mujeres +') + num(Math.abs(v), 2) + ' σ' } } };
+             tooltip: { y: { formatter: (v: number) => (v > 0 ? 'Hombres sacan más: +' : 'Mujeres sacan más: +') + num(Math.abs(v), 2) + ' desviaciones' } } };
   }));
 
   protected madre = computed<ApexOptions | null>(() => this.conTema(() => {
@@ -220,7 +232,7 @@ export class Landing {
     const tipos = ['OFICIAL RURAL', 'OFICIAL URBANO', 'NO OFICIAL URBANO'];
     const val = (choco: boolean, tipo: string) => t.find(x => x.choco === choco && x.tipo === tipo)?.p ?? null;
     return { chart: { type: 'bar' }, series: [{ name: 'Resto del país', data: tipos.map(x => val(false, x)) }, { name: 'Chocó', data: tipos.map(x => val(true, x)) }] as ApexOptions['series'],
-             xaxis: { categories: ['Oficial rural', 'Oficial urbano', 'Privado urbano'] }, colors: [this.t('active'), this.t('danger')],
+             xaxis: { categories: ['Público rural', 'Público urbano', 'Privado urbano'] }, colors: [this.t('active'), this.t('danger')],
              plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', dataLabels: { position: 'top' } } }, yaxis: { min: 150, max: 320, title: { text: 'Puntaje global' } },
              dataLabels: { enabled: true, formatter: (v: number) => num(v, 0), offsetY: -20, style: { colors: [this.t('text')], fontSize: '11px' } },
              legend: { position: 'top', horizontalAlign: 'left' } };
@@ -233,7 +245,7 @@ export class Landing {
     const datos = p.map((x, i) => {
       const previo = i === 0 ? 0 : p[i - 1].brecha;
       const cierra = i > 0 && x.brecha > previo;
-      return { x: i === 0 ? 'Brecha bruta' : x.paso.replace(/^\+\s*/, '+ ').replace(/\s*\(.*\)$/, ''),
+      return { x: i === 0 ? 'Diferencia inicial' : (ETIQUETAS_PASO[i] ?? x.paso.replace(/^\+\s*/, '+ ').replace(/\s*\(.*\)$/, '')),
                y: i === 0 ? [x.brecha, 0] : [Math.min(previo, x.brecha), Math.max(previo, x.brecha)],
                fillColor: i === 0 ? this.t('danger') : i === p.length - 1 ? this.t('warning') : cierra ? this.t('success') : this.t('danger'),
                valor: x.brecha };
@@ -262,7 +274,7 @@ export class Landing {
              markers: { size: 0 }, xaxis: { categories: pares[nombres[0]].anios }, legend: { position: 'top', horizontalAlign: 'left' },
              yaxis: { title: { text: 'Desviaciones frente al país' }, labels: { formatter: (v: number) => num(v, 1) } },
              annotations: { yaxis: [{ y: 0, borderColor: this.t('border-strong'), label: { text: 'país', style: { background: 'transparent', color: this.t('muted') } } }] },
-             tooltip: { shared: true, y: { formatter: (v: number) => num(v, 2) + ' σ' } } };
+             tooltip: { shared: true, y: { formatter: (v: number) => num(v, 2) + ' desviaciones' } } };
   }));
 
   protected colegios = computed<ApexOptions | null>(() => this.conTema(() => {

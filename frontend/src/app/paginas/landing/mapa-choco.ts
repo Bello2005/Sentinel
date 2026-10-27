@@ -9,10 +9,10 @@ interface Indicador { id: keyof Municipio; titulo: string; corto: string; unidad
 
 const INDICADORES: Indicador[] = [
   { id: 'puntaje', titulo: 'Puntaje global Saber 11', corto: 'Puntaje', unidad: ' pts', dec: 1, mejorAlto: true, icono: 'school' },
-  { id: 'ipm', titulo: 'Pobreza multidimensional (censo 2018)', corto: 'Pobreza', unidad: ' %', dec: 1, mejorAlto: false, icono: 'home_work' },
-  { id: 'cobertura_media', titulo: 'Cobertura neta en media (10.° y 11.°)', corto: 'Cobertura', unidad: ' %', dec: 1, mejorAlto: true, icono: 'groups' },
+  { id: 'ipm', titulo: 'Personas en pobreza (censo 2018)', corto: 'Pobreza', unidad: ' %', dec: 1, mejorAlto: false, icono: 'home_work' },
+  { id: 'cobertura_media', titulo: 'Jóvenes que estudian 10.° y 11.° (cobertura)', corto: 'Estudian', unidad: ' %', dec: 1, mejorAlto: true, icono: 'groups' },
   { id: 'internet_hogar', titulo: 'Estudiantes con internet en casa', corto: 'Internet', unidad: ' %', dec: 1, mejorAlto: true, icono: 'wifi' },
-  { id: 'cambio_z', titulo: 'Cambio frente al país desde 2014-2016 (desviaciones)', corto: 'Tendencia', unidad: '', dec: 2, mejorAlto: true, divergente: true, icono: 'trending_up' },
+  { id: 'cambio_z', titulo: '¿Se acercó o se alejó del país desde 2014-2016?', corto: 'Cambio', unidad: '', dec: 2, mejorAlto: true, divergente: true, icono: 'trending_up' },
 ];
 
 @Component({
@@ -62,20 +62,20 @@ const INDICADORES: Indicador[] = [
         @if (sel(); as m) {
           <div class="sx-eyebrow">Municipio seleccionado</div>
           <h3>{{ m.nombre }}</h3>
-          @if (m.en_10_mas_bajo) { <span class="sx-pill bad"><span class="sx-dot"></span>En el 10 % más bajo del país</span> }
-          @else { <span class="sx-pill ok"><span class="sx-dot"></span>Fuera del 10 % más bajo</span> }
+          @if (m.en_10_mas_bajo) { <span class="sx-pill bad"><span class="sx-dot"></span>Entre los más bajos del país</span> }
+          @else { <span class="sx-pill ok"><span class="sx-dot"></span>Fuera del grupo más bajo</span> }
           <div class="grande"><b>{{ fmt(m.puntaje, 1) }}</b><span>puntaje global promedio</span></div>
           <dl>
             <div><dt>Puesto en el país</dt><dd>{{ m.puesto_pais ?? '—' }} <small>de {{ e().municipios.total_municipios_pais }}</small></dd></div>
             <div><dt>Estudiantes</dt><dd>{{ fmt(m.estudiantes) }}</dd></div>
-            <div><dt>Pobreza multidimensional</dt><dd>{{ fmt(m.ipm, 1) }} %</dd></div>
-            <div><dt>Cobertura en media</dt><dd>{{ fmt(m.cobertura_media, 1) }} %</dd></div>
+            <div><dt>Personas en pobreza</dt><dd>{{ fmt(m.ipm, 1) }} %</dd></div>
+            <div><dt>Jóvenes que estudian 10.° y 11.°</dt><dd>{{ fmt(m.cobertura_media, 1) }} %</dd></div>
             <div><dt>Internet en casa</dt><dd>{{ fmt(m.internet_hogar, 1) }} %</dd></div>
-            <div><dt>Cambio vs. país</dt><dd [class.pos]="(m.cambio_z ?? 0) > 0" [class.neg]="(m.cambio_z ?? 0) < 0">{{ (m.cambio_z ?? 0) > 0 ? '+' : '' }}{{ fmt(m.cambio_z, 2) }} σ</dd></div>
+            <div><dt>Cambio frente al país</dt><dd [class.pos]="(m.cambio_z ?? 0) > 0" [class.neg]="(m.cambio_z ?? 0) < 0">{{ (m.cambio_z ?? 0) > 0 ? '+' : '' }}{{ fmt(m.cambio_z, 2) }}</dd></div>
           </dl>
         } @else {
           <div class="sx-eyebrow">{{ ind().titulo }}</div>
-          <p class="sx-muted">Pase el cursor o use <kbd>Tab</kbd> sobre el mapa. Haga clic en un municipio para ver su ficha.</p>
+          <p class="sx-muted">Pase el cursor por el mapa o toque un municipio para ver su ficha.</p>
         }
         <div class="ranking">
           <div class="sx-eyebrow">Ranking · {{ ind().corto }}</div>

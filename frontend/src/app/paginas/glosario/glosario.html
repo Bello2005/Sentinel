@@ -1,0 +1,96 @@
+<a class="saltar" href="#terminos">Saltar a los términos</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i></div>
+<sx-cabecera />
+
+<main>
+  <section class="hero">
+    @if (desdeElSitio) {
+      <button class="volver" (click)="volver()"><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>Volver a donde estaba</button>
+    }
+    <span class="chip"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span>Glosario · {{ total }} palabras</span>
+    <h1>Las palabras del estudio, <span class="grad">explicadas fácil</span></h1>
+    <p>Si una palabra no se entiende, aquí está explicada con un ejemplo de la vida diaria. Escriba lo que busca o elija un tema.</p>
+
+    <div class="buscador" role="search">
+      <span class="material-symbols-rounded" aria-hidden="true">search</span>
+      <input type="search" [value]="busqueda()" (input)="busqueda.set($any($event.target).value)" placeholder="Por ejemplo: brecha, percentil, modelo…"
+             aria-label="Buscar una palabra" autocomplete="off" />
+      @if (busqueda()) {
+        <button class="limpiar" (click)="busqueda.set('')" aria-label="Borrar búsqueda"><span class="material-symbols-rounded">close</span></button>
+      }
+    </div>
+
+    <div class="filtros">
+      <div class="chips" role="radiogroup" aria-label="Tema">
+        <button role="radio" [attr.aria-checked]="categoria() === null" [class.sel]="categoria() === null" (click)="categoria.set(null)">Todas <small>{{ total }}</small></button>
+        @for (c of categorias; track c.id) {
+          <button role="radio" [attr.aria-checked]="categoria() === c.id" [class.sel]="categoria() === c.id" (click)="categoria.set(categoria() === c.id ? null : c.id)">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ c.icono }}</span>{{ c.titulo }} <small>{{ cuenta(c.id) }}</small></button>
+        }
+      </div>
+      <button class="letra" (click)="alternarLetra()" [attr.aria-pressed]="letraGrande()">
+        <span class="material-symbols-rounded" aria-hidden="true">{{ letraGrande() ? 'text_decrease' : 'text_increase' }}</span>
+        {{ letraGrande() ? 'Letra normal' : 'Letra más grande' }}</button>
+    </div>
+    <p class="resultado" aria-live="polite">
+      @if (busqueda() || categoria()) { {{ filtrados().length }} {{ filtrados().length === 1 ? 'palabra encontrada' : 'palabras encontradas' }} }
+    </p>
+  </section>
+
+  <div id="terminos" class="cuerpo">
+    <aside class="indice" aria-label="Índice del glosario">
+      @for (g of grupos(); track g.id) {
+        <div class="grupo-indice">
+          <b><span class="material-symbols-rounded" aria-hidden="true">{{ g.icono }}</span>{{ g.titulo }}</b>
+          @for (t of g.terminos; track t.id) {
+            <a [href]="'/glosario#' + t.id" (click)="irA(t.id, $event)" [class.sel]="destacado() === t.id">{{ t.termino }}</a>
+          }
+        </div>
+      }
+    </aside>
+
+    <div class="lista">
+      @for (g of grupos(); track g.id) {
+        <section class="categoria" [attr.aria-labelledby]="'cat-' + g.id">
+          <header sxRevelar>
+            <span class="material-symbols-rounded" aria-hidden="true">{{ g.icono }}</span>
+            <div><h2 [id]="'cat-' + g.id">{{ g.titulo }}</h2><p>{{ g.descripcion }}</p></div>
+          </header>
+          @for (t of g.terminos; track t.id) {
+            <article class="tarjeta" [id]="t.id" tabindex="-1" [class.destacado]="destacado() === t.id" [attr.aria-labelledby]="'t-' + t.id">
+              <div class="cabeza">
+                <span class="icono-t material-symbols-rounded" aria-hidden="true">{{ t.icono }}</span>
+                <h3 [id]="'t-' + t.id">{{ t.termino }}</h3>
+              </div>
+              <p class="corto">{{ t.corto }}</p>
+              <p class="texto">{{ t.texto }}</p>
+              @if (t.ejemplo) {
+                <div class="ejemplo"><span class="material-symbols-rounded" aria-hidden="true">lightbulb</span><div><b>Por ejemplo</b><p>{{ t.ejemplo }}</p></div></div>
+              }
+              @if (relacionados(t).length) {
+                <div class="ver"><span>Relacionadas:</span>
+                  @for (r of relacionados(t); track r.id) { <a [href]="'/glosario#' + r.id" (click)="irA(r.id, $event)">{{ r.termino }}</a> }
+                </div>
+              }
+            </article>
+          }
+        </section>
+      } @empty {
+        <div class="vacio">
+          <span class="material-symbols-rounded" aria-hidden="true">search_off</span>
+          <h2>No encontramos “{{ busqueda() }}”</h2>
+          <p>Pruebe con otra palabra o quite el filtro de tema.</p>
+          <button class="sx-btn" (click)="busqueda.set(''); categoria.set(null)">Ver todas las palabras</button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <section class="cierre">
+    <div><h2>¿Falta una palabra?</h2><p>Si algo del estudio sigue sin entenderse, la explicación paso a paso está en el artículo.</p></div>
+    <div class="cierre-btns">
+      <a class="sx-btn primary lg" routerLink="/proceso"><span class="material-symbols-rounded">auto_stories</span>Cómo lo hicimos</a>
+      <a class="sx-btn lg" routerLink="/"><span class="material-symbols-rounded">insights</span>Ver el estudio</a>
+    </div>
+  </section>
+</main>

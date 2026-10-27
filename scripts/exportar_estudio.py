@@ -222,19 +222,19 @@ def modelo():
             "intervalo_80": meta["intervalo_80"], "registros": meta["datos"]["registros"]}
 
 
-HIPOTESIS = [  # Actividad 3 (10_actividad3_auditoria.ipynb, sección 8)
-    {"id": "H1", "titulo": "El hogar explica la mayor parte de la brecha",
-     "resultado": "Comparando hogares iguales la brecha baja de 45 a 33-35 puntos: el hogar explica cerca del 25 %.", "veredicto": "No respaldada"},
-    {"id": "H2", "titulo": "Los colegios oficiales y rurales explican la brecha",
-     "resultado": "Agregar el tipo de colegio casi no cambia la brecha (−33,8 → −33,2).", "veredicto": "No respaldada"},
-    {"id": "H3", "titulo": "La pandemia agrandó la brecha",
-     "resultado": "A igual hogar, Quibdó −0,50 en 2019 y 2020; resto del Chocó −0,72 y −0,68 (falta 2021).", "veredicto": "No respaldada"},
-    {"id": "H4", "titulo": "Es un atraso regional del Pacífico",
-     "resultado": "Chocó promedia 205 y la costa pacífica 209; con controles, Chocó −16,8 y el resto del Pacífico −11,7.", "veredicto": "Parcialmente respaldada"},
-    {"id": "H5", "titulo": "Los hombres superan a las mujeres en matemáticas",
-     "resultado": "En el país los hombres sacan 0,27 desviaciones más; en el Chocó, −0,02: no hay diferencia.", "veredicto": "No respaldada"},
-    {"id": "H6", "titulo": "La formación docente pesa en la brecha",
-     "resultado": "Los docentes de la secretaría bajan la brecha de −14,3 a −9,5; ~20 % con posgrado en el Chocó vs 57-62 % en Nariño.", "veredicto": "Parcialmente respaldada"},
+HIPOTESIS = [  # Actividad 3 (10_actividad3_auditoria.ipynb, sección 8), en palabras sencillas para la landing
+    {"id": "H1", "titulo": "La casa explica casi toda la diferencia",
+     "resultado": "Comparando hogares parecidos, la diferencia baja de 45 a unos 34 puntos: la casa explica solo una cuarta parte.", "veredicto": "No respaldada"},
+    {"id": "H2", "titulo": "Los colegios públicos y rurales explican la diferencia",
+     "resultado": "Tener en cuenta el tipo de colegio casi no cambia nada: de 33,8 a 33,2 puntos menos.", "veredicto": "No respaldada"},
+    {"id": "H3", "titulo": "La pandemia agrandó la diferencia",
+     "resultado": "Comparando hogares parecidos, la diferencia fue casi igual en 2019 y en 2020, en Quibdó y en el resto del Chocó. Falta 2021 para estar seguros.", "veredicto": "No respaldada"},
+    {"id": "H4", "titulo": "Es un atraso de toda la región Pacífica",
+     "resultado": "Le pasa en parte a toda la costa pacífica, pero comparando municipios parecidos el Chocó queda más abajo: 16,8 puntos menos, frente a 11,7 del resto del Pacífico.", "veredicto": "Parcialmente respaldada"},
+    {"id": "H5", "titulo": "A los hombres les va mejor en matemáticas",
+     "resultado": "En el resto del país, sí: los hombres sacan algo más (0,27 desviaciones). En el Chocó no hay diferencia (−0,02).", "veredicto": "No respaldada"},
+    {"id": "H6", "titulo": "La formación de los profesores pesa en la diferencia",
+     "resultado": "Al tener en cuenta a los profesores, la diferencia baja de 14,3 a 9,5 puntos. En el Chocó, cerca de 20 de cada 100 profesores tienen posgrado; en Nariño, unos 60.", "veredicto": "Parcialmente respaldada"},
 ]
 
 
