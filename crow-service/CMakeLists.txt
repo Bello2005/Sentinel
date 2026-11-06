@@ -13,6 +13,7 @@ set(VENDOR "${CMAKE_CURRENT_SOURCE_DIR}/../vendor" CACHE PATH "Carpeta con crow,
 set(ORT_DIR "${VENDOR}/onnxruntime")
 
 find_package(Threads REQUIRED)
+find_package(SQLite3 REQUIRED)
 add_library(dependencias INTERFACE)
 target_include_directories(dependencias INTERFACE
   "${VENDOR}/crow/include" "${VENDOR}/asio/asio/include" "${VENDOR}/include" "${ORT_DIR}/include")
@@ -27,6 +28,7 @@ set_target_properties(prueba_onnx PROPERTIES BUILD_RPATH "${ORT_DIR}/lib")
 
 # Servidor de la API
 add_executable(saber11_api src/main.cpp src/tabla.cpp src/validador.cpp src/modelo.cpp src/reportes.cpp
-               src/eda.cpp src/reporte_eda.cpp src/entrenamiento.cpp)
-target_link_libraries(saber11_api PRIVATE dependencias)
+               src/eda.cpp src/reporte_eda.cpp src/entrenamiento.cpp
+               src/autenticacion.cpp src/database.cpp src/cripto.cpp)
+target_link_libraries(saber11_api PRIVATE dependencias SQLite::SQLite3)
 set_target_properties(saber11_api PROPERTIES BUILD_RPATH "${ORT_DIR}/lib")

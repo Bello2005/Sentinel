@@ -1,0 +1,352 @@
+<a class="saltar" href="#contenido" (click)="ir('contenido', $event)">Saltar al contenido</a>
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<!-- Navegación: la misma cabecera del glosario y del artículo -->
+<sx-cabecera />
+
+<main id="contenido" tabindex="-1">
+  <!-- HERO -->
+  <section id="inicio" class="hero">
+    <div class="hero-texto">
+      <span class="eyebrow-chip"><span class="sx-dot pulse"></span>Datos públicos del ICFES · {{ r()?.anios ?? '2010–2022' }}</span>
+      <h1>El Chocó, <span class="grad">último en Saber 11</span> entre los 32 departamentos y Bogotá.</h1>
+      <p class="precision">Según el puntaje promedio del examen en {{ r()?.anio_ultimo ?? 2022 }}.</p>
+      <p class="bajada">
+        Revisamos <b>{{ num(r()?.estudiantes ?? 6225605) }}</b> resultados del examen <sx-termino t="saber-11">Saber 11</sx-termino> para entender por qué al Chocó le va peor,
+        qué lo explica y cómo le podría ir el año siguiente. Con una regla que no se rompe: <b>la <sx-termino t="ia">inteligencia artificial</sx-termino> nunca decide sola</b>.
+      </p>
+      <div class="cta">
+        <a class="sx-btn primary lg" href="#brecha" (click)="ir('brecha', $event)">Ver los resultados <span class="material-symbols-rounded">south</span></a>
+        <a class="sx-btn lg" routerLink="/proceso"><span class="material-symbols-rounded">auto_stories</span>Cómo lo hicimos</a>
+      </div>
+      <p class="ayuda"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span>
+        <span>¿Una palabra rara? Las palabras con <span class="muestra">subrayado punteado</span> se pueden tocar para ver qué significan, o abra el
+          <a routerLink="/glosario">glosario</a>.</span></p>
+      <ul class="sellos" aria-label="Características">
+        <li><span class="material-symbols-rounded" aria-hidden="true">verified</span>Datos oficiales que cualquiera puede revisar</li>
+        <li><span class="material-symbols-rounded" aria-hidden="true">gavel</span>Una persona siempre aprueba</li>
+        <li><span class="material-symbols-rounded" aria-hidden="true">lock_open</span>Resultados abiertos para todos</li>
+      </ul>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      @if (silueta(); as s) {
+        <svg [attr.viewBox]="s.viewBox" class="silueta">
+          <defs>
+            <linearGradient id="grad-silueta" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="var(--sx-accent)" stop-opacity="0.55" />
+              <stop offset="1" stop-color="var(--sx-candidate)" stop-opacity="0.35" />
+            </linearGradient>
+          </defs>
+          @for (m of s.municipios; track m.cod; let i = $index) {
+            <path [attr.d]="m.d" pathLength="1" [style.animation-delay.ms]="i * 55" />
+          }
+        </svg>
+      } @else { <div class="silueta-esqueleto sx-skeleton"></div> }
+      <div class="flotante f1"><span class="material-symbols-rounded">leaderboard</span><b>{{ r()?.puesto_choco ?? 33 }}/{{ r()?.departamentos ?? 33 }}</b><small>puesto entre 32 departamentos y Bogotá</small></div>
+      <div class="flotante f2"><span class="material-symbols-rounded">trending_down</span><b>{{ num(r()?.brecha_ultimo_anio ?? -45.8, 1) }}</b><small>puntos de diferencia con el país · {{ r()?.anio_ultimo }}</small></div>
+      <div class="flotante f3"><span class="material-symbols-rounded">location_on</span><b>{{ r()?.municipios_10_mas_bajo ?? 26 }} de {{ r()?.municipios_con_dato ?? 30 }}</b><small>municipios entre los más bajos del país</small></div>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <section class="kpis" sxRevelar (visible)="kpisVisibles.set(true)" aria-label="Cifras principales">
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">database</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.estudiantes ?? null) : 0" /></b><span>exámenes Saber 11 revisados, de 2010 a 2022</span></div>
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">compare_arrows</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.brecha_ultimo_anio ?? null) : 0" [decimales]="1" /></b><span>puntos de diferencia con el resto del país en {{ r()?.anio_ultimo }}, en un examen de 0 a 500</span></div>
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">groups</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.pct_cuartil_bajo ?? null) : 0" [decimales]="1" sufijo=" %" /></b><span>de los estudiantes del Chocó queda en la cuarta parte más baja del país</span></div>
+    <div class="kpi sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">star</span>
+      <b><sx-contador [valor]="kpisVisibles() ? (r()?.pct_10_mas_alto ?? null) : 0" [decimales]="1" sufijo=" %" /></b><span>llega al grupo de los mejores del país, los 10 de cada 100 más altos</span></div>
+  </section>
+
+  <nav class="subnav" aria-label="Secciones del estudio">
+    <div class="subnav-in">
+      @for (s of secciones; track s.id) {
+        <a [href]="'#' + s.id" (click)="ir(s.id, $event)" [class.activa]="seccionActiva() === s.id" [attr.aria-current]="seccionActiva() === s.id ? 'true' : null"
+           [attr.data-seccion]="s.id">{{ s.titulo }}</a>
+      }
+    </div>
+    <div class="progreso" [style.transform]="'scaleX(' + progreso() + ')'" aria-hidden="true"></div>
+  </nav>
+
+  @if (datos.error()) {
+    <div class="sx-card aviso-error" role="alert"><span class="material-symbols-rounded">cloud_off</span>No se pudieron cargar los datos del estudio. Recargue la página.</div>
+  }
+
+  @if (e(); as e) {
+    <!-- 1. LA BRECHA EN EL TIEMPO -->
+    <section id="brecha" class="seccion" aria-labelledby="t-brecha">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">01</span>
+        <div><div class="eyebrow">La diferencia en el tiempo</div>
+          <h2 id="t-brecha">Una distancia que no se cierra</h2>
+          <p>Desde 2014, los estudiantes del Chocó sacan entre 31 y 48 puntos menos que los del resto del país. Y no está mejorando: comparando de
+             forma justa entre años (con <sx-termino t="desviacion">desviaciones</sx-termino>), la <sx-termino t="brecha">brecha</sx-termino>&ngsp;<b>se hizo más grande</b>: pasó de −0,72 en 2014 a −0,85 en 2022.</p></div>
+      </div>
+      <div class="panel" sxRevelar>
+        <div class="segmentado" role="radiogroup" aria-label="Medida">
+          <button role="radio" [attr.aria-checked]="modoEvolucion() === 'puntaje'" [class.sel]="modoEvolucion() === 'puntaje'" (click)="modoEvolucion.set('puntaje')">Puntaje global</button>
+          <button role="radio" [attr.aria-checked]="modoEvolucion() === 'z'" [class.sel]="modoEvolucion() === 'z'" (click)="modoEvolucion.set('z')">Comparado con el país</button>
+          <button role="radio" [attr.aria-checked]="modoEvolucion() === 'mat'" [class.sel]="modoEvolucion() === 'mat'" (click)="modoEvolucion.set('mat')">Matemáticas desde 2010</button>
+        </div>
+        @if (evolucion(); as o) { <sx-grafica [opciones]="o" [alto]="360" etiqueta="Evolución del puntaje del Chocó frente al resto del país" /> }
+        <p class="nota"><span class="material-symbols-rounded" aria-hidden="true">info</span><span>2018 y 2021 no aparecen porque esos años están <sx-termino t="anios-incompletos">incompletos</sx-termino> en los datos públicos. El puntaje global existe desde 2014.</span></p>
+      </div>
+      <div class="insights" sxRevelar>
+        <article class="insight sx-r-hijo"><b>{{ num(e.evolucion.puntaje.brecha[e.evolucion.puntaje.brecha.length - 1], 1) }}</b><span>puntos de diferencia en {{ e.resumen.anio_ultimo }}. El examen va de 0 a 500.</span></article>
+        <article class="insight sx-r-hijo"><b>−0,85</b><span>en 2022: el estudiante típico del Chocó está casi una <sx-termino t="desviacion">desviación</sx-termino> completa por debajo del país.</span></article>
+        <article class="insight sx-r-hijo"><b>Inglés</b><span>solo el {{ num(e.evolucion.ingles_b1.choco[e.evolucion.ingles_b1.choco.length - 1], 1) }} % llega al <sx-termino t="nivel-ingles">nivel B1</sx-termino> o más (un inglés para conversar), frente a {{ num(e.evolucion.ingles_b1.resto![e.evolucion.ingles_b1.resto!.length - 1], 1) }} % en el resto del país.</span></article>
+      </div>
+    </section>
+
+    <!-- 2. EN EL PAÍS -->
+    <section id="pais" class="seccion" aria-labelledby="t-pais">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">02</span>
+        <div><div class="eyebrow">Colombia, año a año</div>
+          <h2 id="t-pais">Último en 6 de los 7 años medidos</h2>
+          <p>Cada departamento (y Bogotá, que se cuenta aparte) tiene un color según qué tan lejos está del <sx-termino t="promedio">promedio</sx-termino> del país. Presione <b>reproducir</b> para ver los años
+             de 2014 a 2022: los puestos cambian, pero el Chocó sigue al fondo. Solo en 2016 Vaupés quedó más abajo.</p></div>
+      </div>
+      <div class="panel" sxRevelar><sx-mapa-pais [e]="e" /></div>
+    </section>
+
+    <!-- 3. DISTRIBUCIÓN -->
+    <section class="seccion" aria-labelledby="t-dist">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">03</span>
+        <div><div class="eyebrow">Dónde quedan los estudiantes</div>
+          <h2 id="t-dist">De cada 100 estudiantes del Chocó, {{ num(e.distribucion.extremos['Chocó']['25 % más bajo'], 0) }} quedan en la cuarta parte más baja del país</h2>
+          <p>No es que unos pocos estudiantes bajen el promedio: a casi todos les va peor. Y la diferencia es más grande arriba: a los mejores
+             estudiantes del Chocó les va bastante peor que a los mejores del resto del país.</p></div>
+      </div>
+      <div class="dos" sxRevelar (visible)="unidadesVisibles.set(true)">
+        <div class="panel unidades">
+          <div class="par">
+            <div><h3>Chocó</h3><sx-unidades [grupos]="unidadesChoco()" [activo]="unidadesVisibles()" /></div>
+            <div><h3>Resto del país</h3><sx-unidades [grupos]="unidadesResto()" [activo]="unidadesVisibles()" /></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>La distancia crece hacia arriba</h3>
+          @if (distribucion(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Puntaje por percentil en el Chocó y el resto del país" /> }
+          <p class="nota"><span>Entre los de más abajo (<sx-termino t="percentil">percentil</sx-termino> 5) la diferencia es de {{ num(e.distribucion.resto[0] - e.distribucion.choco[0], 0) }} puntos; en la mitad de la fila (<sx-termino t="mediana">mediana</sx-termino>), de {{ num(e.distribucion.resto[9] - e.distribucion.choco[9], 0) }}.</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. TERRITORIO -->
+    <section id="territorio" class="seccion" aria-labelledby="t-territorio">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">04</span>
+        <div><div class="eyebrow">El territorio</div>
+          <h2 id="t-territorio">{{ e.municipios.en_10_mas_bajo }} de {{ e.municipios.con_dato }} municipios están entre los más bajos del país</h2>
+          <p>Están en el 10 % de municipios con menor puntaje de Colombia. Explore el mapa: cambie lo que se muestra y verá que la
+             <sx-termino t="pobreza-multidimensional">pobreza</sx-termino>, cuántos jóvenes estudian (<sx-termino t="cobertura">cobertura</sx-termino>) y quién tiene internet dibujan casi el mismo mapa que el puntaje.</p></div>
+      </div>
+      <div class="panel" sxRevelar><sx-mapa-choco [e]="e" /></div>
+      <div class="dos" sxRevelar>
+        <div class="panel">
+          <h3>Pobreza y puntaje van juntos</h3>
+          @if (dispersion(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Puntaje frente a pobreza multidimensional por municipio" /> }
+        </div>
+        <div class="panel destacado">
+          <span class="material-symbols-rounded" aria-hidden="true">insights</span>
+          <div class="cifra">{{ num(corrPobreza(), 2) }}</div>
+          <p>es la <sx-termino t="correlacion">correlación</sx-termino> entre pobreza y puntaje en los municipios del Chocó: donde hay más pobreza, el puntaje suele ser más bajo.
+             De todo lo que rodea al estudiante, es lo que más se parece al mapa del examen.</p>
+          <p class="nota"><span>Que dos cosas vayan juntas no prueba que una cause la otra (<sx-termino t="causa">asociación no es causa</sx-termino>). Cada punto es el promedio de un municipio.</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. MATERIAS -->
+    <section class="seccion" aria-labelledby="t-materias">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">05</span>
+        <div><div class="eyebrow">Por materias</div>
+          <h2 id="t-materias">La brecha está en todas las materias</h2>
+          <p>En las cinco <sx-termino t="materias">materias</sx-termino> el Chocó está por debajo, y más en ciencias naturales y lectura crítica. Y algo que rompe un mito: en el
+             Chocó <b>a los hombres no les va mejor que a las mujeres en matemáticas</b>; en el resto del país, sí.</p></div>
+      </div>
+      <div class="tres" sxRevelar>
+        <div class="panel sx-r-hijo"><h3>Distancia al país por materia</h3>@if (materias(); as o) { <sx-grafica [opciones]="o" [alto]="280" etiqueta="Desviaciones frente al país por materia" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Niveles de inglés, de A- (el más bajo) a B+</h3>@if (ingles(); as o) { <sx-grafica [opciones]="o" [alto]="280" etiqueta="Distribución por nivel de inglés" /> }</div>
+        <div class="panel sx-r-hijo"><h3>¿Quién saca más en cada materia?</h3>@if (genero(); as o) { <sx-grafica [opciones]="o" [alto]="280" etiqueta="Diferencia entre hombres y mujeres por materia" /> }</div>
+      </div>
+    </section>
+
+    <!-- 6. HOGAR Y COLEGIO -->
+    <section id="hogar" class="seccion" aria-labelledby="t-hogar">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">06</span>
+        <div><div class="eyebrow">Hogar y colegio</div>
+          <h2 id="t-hogar">Las ventajas de la casa ayudan menos en el Chocó</h2>
+          <p>Cuando la mamá no estudió, la diferencia con el resto del país es de <b>{{ num(brechaMadre()?.baja, 0) }} puntos</b>; cuando la mamá es profesional,
+             es de <b>{{ num(brechaMadre()?.alta, 0) }}</b>. Es decir: tener una mamá con estudios ayuda, pero ayuda menos en el Chocó. Y algo raro: allí, a más
+             <sx-termino t="estrato">estrato</sx-termino>, <b>menos</b> puntaje; en el resto del país pasa lo contrario.</p></div>
+      </div>
+      <div class="tres" sxRevelar>
+        <div class="panel sx-r-hijo"><h3>Estudios de la mamá</h3>@if (madre(); as o) { <sx-grafica [opciones]="o" [alto]="290" etiqueta="Puntaje según educación de la madre" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Estrato del hogar</h3>@if (estrato(); as o) { <sx-grafica [opciones]="o" [alto]="290" etiqueta="Puntaje según estrato" /> }</div>
+        <div class="panel sx-r-hijo"><h3>Tipo de colegio</h3>@if (tipoColegio(); as o) { <sx-grafica [opciones]="o" [alto]="290" etiqueta="Puntaje según tipo de colegio" /> }</div>
+      </div>
+    </section>
+
+    <!-- 7. QUÉ EXPLICA LA BRECHA -->
+    <section id="explicacion" class="seccion" aria-labelledby="t-explicacion">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">07</span>
+        <div><div class="eyebrow">¿Por qué la diferencia?</div>
+          <h2 id="t-explicacion">La casa explica una cuarta parte. El lugar donde se estudia, casi todo lo demás.</h2>
+          <p>Empezamos con la diferencia tal cual y fuimos comparando estudiantes cada vez más parecidos (<sx-termino t="brecha-bruta">comparar parecidos</sx-termino>): hogares
+             parecidos, colegios parecidos, municipios parecidos. Con 1,1 millones de estudiantes (2019 y 2022), la diferencia baja de
+             <b>{{ num(e.brecha.pasos[0].brecha, 1) }}</b> a <b>{{ num(e.brecha.pasos[e.brecha.pasos.length - 1].brecha, 1) }} puntos</b>. Con el cálculo más estricto,
+             lo que queda <sx-termino t="no-distingue-cero">no se distingue de cero</sx-termino>.</p></div>
+      </div>
+      <div class="dos ancha" sxRevelar>
+        <div class="panel">@if (cascada(); as o) { <sx-grafica [opciones]="o" [alto]="380" etiqueta="Cascada de la brecha al agregar variables" /> }</div>
+        <div class="panel lista-pesos">
+          <h3>Lo que más pesa</h3>
+          <ol>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">diversity_3</span><div><b><sx-termino t="composicion-etnica">Composición étnica</sx-termino> del colegio</b><small>≈ −11 puntos. No es la causa: es la huella de años de exclusión, menos inversión y un colegio y un examen pensados para otros contextos.</small></div></li>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">home_work</span><div><b>Pobreza del municipio</b><small>≈ −8 puntos.</small></div></li>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">school</span><div><b>Profesores con <sx-termino t="formacion-docente">posgrado</sx-termino></b><small>≈ −8 puntos: cerca de 20 de cada 100 en el Chocó, frente a unos 60 en Nariño.</small></div></li>
+            <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">schedule</span><div><b>Estudiantes mayores para su grado (<sx-termino t="extraedad">extraedad</sx-termino>)</b><small>≈ −5 puntos.</small></div></li>
+          </ol>
+          <p class="nota"><span>Medir mejor la casa (libros, comida, si el estudiante trabaja) casi no cambia la diferencia: el problema no está solo dentro de la casa.</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. DOS CHOCÓS -->
+    <section id="dos-chocos" class="seccion" aria-labelledby="t-dos">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">08</span>
+        <div><div class="eyebrow">Dos Chocós</div>
+          <h2 id="t-dos">Quibdó y el resto del departamento son historias distintas</h2>
+          <p>En el resto del Chocó, la diferencia se explica casi toda por la pobreza, la composición étnica, la extraedad y la formación de los profesores.
+             Quibdó es distinto: saca unos 20 puntos menos de lo que se esperaría por sus condiciones. Es el <b>{{ puestoQuibdo() }}.º municipio más
+             <sx-termino t="lo-esperado">por debajo de lo esperado</sx-termino></b> entre {{ e.brecha.total_municipios_comparados }} del país.</p></div>
+      </div>
+      <div class="dos ancha" sxRevelar>
+        <div class="panel">
+          <div class="fila-cab"><h3>Frente al país, año a año</h3>
+            <div class="segmentado chico" role="radiogroup" aria-label="Comparación">
+              <button role="radio" [attr.aria-checked]="!paresAjustados()" [class.sel]="!paresAjustados()" (click)="paresAjustados.set(false)">Tal cual</button>
+              <button role="radio" [attr.aria-checked]="paresAjustados()" [class.sel]="paresAjustados()" (click)="paresAjustados.set(true)">Con hogares parecidos</button>
+            </div></div>
+          @if (dosChocos(); as o) { <sx-grafica [opciones]="o" [alto]="340" etiqueta="Quibdó, resto del Chocó y pares del Pacífico frente al país" /> }
+        </div>
+        <div class="panel">
+          <h3>{{ colegiosAbajo().abajo }} de {{ colegiosAbajo().total }} colegios de Quibdó, por debajo de lo esperado</h3>
+          @if (colegios(); as o) { <sx-grafica [opciones]="o" [alto]="340" etiqueta="Colegios de Quibdó frente a lo esperado" /> }
+        </div>
+      </div>
+      <div class="insights" sxRevelar>
+        <article class="insight sx-r-hijo"><b>30 % vs 83 %</b><span>en Quibdó, el registro oficial (<sx-termino t="simat">SIMAT</sx-termino>) cuenta como afro o indígenas a 30 de cada 100 estudiantes; en el examen se reconocen así 83 de cada 100. El registro se queda corto.</span></article>
+        <article class="insight sx-r-hijo"><b>−14 / −43</b><span>puntos frente a un estudiante parecido del resto del país, cuando la mamá no estudió / es profesional: los títulos rinden menos.</span></article>
+        <article class="insight sx-r-hijo"><b>Último de 50</b><span>la carrera de Educación de la Universidad Tecnológica del Chocó, que forma a muchos profesores de la región, en lectura y razonamiento del <sx-termino t="saber-pro">Saber Pro</sx-termino>.</span></article>
+      </div>
+    </section>
+
+    <!-- HIPÓTESIS -->
+    <section id="hipotesis" class="seccion" aria-labelledby="t-hip">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">09</span>
+        <div><div class="eyebrow">Ideas puestas a prueba</div><h2 id="t-hip">Seis ideas comunes, revisadas con datos</h2>
+          <p>Antes de sacar conclusiones, convertimos cada idea en una pregunta que los datos pudieran responder (<sx-termino t="hipotesis">hipótesis</sx-termino>).
+             Varias ideas muy repetidas resultaron no ser ciertas.</p></div>
+      </div>
+      <div class="hipotesis" sxRevelar>
+        @for (h of e.hipotesis; track h.id) {
+          <article class="hip sx-r-hijo" [attr.data-v]="h.veredicto.startsWith('Parcial') ? 'parcial' : h.veredicto.startsWith('No') ? 'no' : 'si'">
+            <header><span class="id">{{ h.id }}</span><span class="veredicto">
+              <span class="material-symbols-rounded" aria-hidden="true">{{ h.veredicto.startsWith('Parcial') ? 'contrast' : h.veredicto.startsWith('No') ? 'cancel' : 'check_circle' }}</span>{{ h.veredicto.startsWith('Parcial') ? 'Los datos la apoyan en parte' : h.veredicto.startsWith('No') ? 'Los datos no la apoyan' : 'Los datos la apoyan' }}</span></header>
+            <h3>{{ h.titulo }}</h3><p>{{ h.resultado }}</p>
+          </article>
+        }
+      </div>
+    </section>
+
+    <!-- 10. EL MODELO -->
+    <section id="modelo" class="seccion" aria-labelledby="t-modelo">
+      <div class="cabeza" sxRevelar>
+        <span class="num-seccion">10</span>
+        <div><div class="eyebrow">Del estudio a una IA vigilada</div>
+          <h2 id="t-modelo">Calcular el próximo año, con una persona al mando</h2>
+          <p>SENTINEL calcula cuánto sacará el año siguiente cada municipio y cada colegio. En el Chocó se equivoca en promedio
+             <b>{{ num(e.modelo.mae.modelo, 2) }} puntos</b> (<sx-termino t="error-medio">error medio</sx-termino>), menos que las <sx-termino t="reglas-simples">reglas simples</sx-termino>, y cada cálculo viene con un
+             rango, como el pronóstico del clima (<sx-termino t="intervalo">intervalo</sx-termino>). Ninguna versión nueva se usa sin que una persona la apruebe.</p></div>
+      </div>
+      <div class="dos ancha" sxRevelar>
+        <div class="panel">
+          <h3>¿Cuánto se equivoca? Probado con años pasados</h3>
+          @if (modelo(); as o) { <sx-grafica [opciones]="o" [alto]="300" etiqueta="Error del modelo frente a reglas simples" /> }
+          <p class="nota"><span>Para cada año se calculó el resultado usando solo los años anteriores, y se comparó con lo que pasó de verdad (<sx-termino t="validacion-temporal">prueba con el pasado</sx-termino>). Más bajo es mejor.</span></p>
+        </div>
+        <div class="panel">
+          <h3>Una receta que se puede leer</h3>
+          <ul class="pesos">
+            @for (c of coeficientes(); track c.nombre) {
+              <li><span>{{ c.nombre }}</span><span class="barra"><span [style.width.%]="abs(c.valor) * 100" [class.neg]="c.valor < 0"></span></span><b>{{ num(c.valor, 3) }}</b></li>
+            }
+          </ul>
+          <p class="nota"><span>El cálculo mezcla la historia de cada municipio o colegio con estos pesos. No inventa subidas ni bajadas para todo el país.</span></p>
+        </div>
+      </div>
+      <ol class="pipeline" sxRevelar aria-label="Flujo de gobierno del modelo">
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span><b>Revisar</b><small>que los datos estén completos y bien</small></li>
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">travel_explore</span><b>Explorar</b><small>resume y grafica cada archivo</small></li>
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">insights</span><b>Predecir</b><small>calcula el próximo año, con un rango</small></li>
+        <li class="sx-r-hijo"><span class="material-symbols-rounded" aria-hidden="true">science</span><b>Aprender</b><small>crea una versión nueva, en espera</small></li>
+        <li class="sx-r-hijo humano"><span class="material-symbols-rounded" aria-hidden="true">gavel</span><b>Decidir</b><small>una persona aprueba y firma</small></li>
+      </ol>
+      <div class="cierre" sxRevelar>
+        <div><h3>¿Quiere saber cómo se construyó?</h3><p class="sx-muted">Lo contamos paso a paso, del análisis de los datos a este sitio web. La plataforma es solo para el equipo autorizado.</p></div>
+        <div class="cierre-btns">
+          <a class="sx-btn primary lg" routerLink="/proceso"><span class="material-symbols-rounded">auto_stories</span>Cómo lo hicimos</a>
+          <a class="sx-btn lg" [routerLink]="sesion.activa() ? '/centro' : '/acceso'"><span class="material-symbols-rounded">{{ sesion.activa() ? 'space_dashboard' : 'lock' }}</span>
+            {{ sesion.activa() ? 'Ir a la plataforma' : 'Plataforma del equipo' }}</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- METODOLOGÍA -->
+    <section class="seccion metodologia" aria-labelledby="t-met">
+      <div class="cabeza" sxRevelar><span class="num-seccion">11</span><div><div class="eyebrow">Cómo se hizo</div><h2 id="t-met">Cómo lo hicimos y qué tener en cuenta</h2></div></div>
+      <div class="acordeon" sxRevelar>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">database</span>Fuentes</summary>
+          <ul>@for (f of e.fuentes; track f) { <li>{{ f }}</li> }</ul></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">cleaning_services</span>Limpieza de los datos</summary>
+          <p>Quitamos copias exactas (en 2019 y 2022 cada estudiante venía dos veces), unificamos los códigos de los municipios y las respuestas sobre el hogar,
+             y pusimos los puntajes en la misma regla para comparar años. Solo usamos resultados que el ICFES permite publicar. Más detalle en
+             <a routerLink="/proceso/limpieza">el capítulo de limpieza</a>.</p></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">event_busy</span>Años incompletos</summary>
+          <p>Los datos públicos no traen completos 2018 ni 2021 (<sx-termino t="calendario-a">calendario A</sx-termino>). Esos años no se usan y el modelo siempre parte del último año con datos.</p></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">balance</span>Cómo leer estos resultados</summary>
+          <p>El Saber 11 solo mide a quienes llegan a grado 11, y en varios municipios del Chocó muchos jóvenes no llegan. Los datos de cada municipio son
+             promedios. Que dos cosas vayan juntas no prueba que una cause la otra. La etnia no explica nada por sí sola: señala desigualdades que se han
+             acumulado por años.</p></details>
+        <details><summary><span class="material-symbols-rounded" aria-hidden="true">code</span>Se puede repetir</summary>
+          <p>Cada paso (descarga, limpieza, análisis, modelo y esta misma página) quedó escrito como un programa que el equipo puede volver a correr y llegar
+             al mismo resultado. Datos de esta página actualizados el {{ e.generado }}.</p></details>
+      </div>
+    </section>
+  }
+</main>
+
+<footer class="pie">
+  <div class="pie-in">
+    <div class="marca"><img src="sentinel.svg" width="28" height="28" alt="" /><span><b>SENTINEL</b><small>Predictive Governance Platform</small></span></div>
+    <p>Datos: ICFES (Saber 11), MEN, DANE, Unidad para las Víctimas y MinTIC. Publicados con licencia CC BY-SA 4.0; esta página usa solo datos agregados.</p>
+    <div class="pie-enlaces">
+      <a href="#inicio" (click)="ir('inicio', $event)">Volver arriba</a>
+      <a routerLink="/proceso">Cómo lo hicimos</a>
+      <a routerLink="/glosario">Glosario</a>
+      <a [routerLink]="sesion.activa() ? '/centro' : '/acceso'">Plataforma</a>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,17 @@
+// Base común de las páginas públicas (glosario y artículo): mismo fondo, salto al contenido y degradado de la landing.
+:host { display: block; position: relative; overflow-x: clip; min-height: 100vh; }
+
+.saltar { position: absolute; left: -999px; top: 8px; z-index: 2000; background: var(--sx-accent); color: var(--sx-accent-ink); padding: 8px 12px; border-radius: 8px; }
+.saltar:focus { left: 8px; }
+
+.aurora { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.aurora i { position: absolute; width: 60vw; height: 60vw; border-radius: 50%; }
+.aurora i:nth-child(1) { background: radial-gradient(closest-side, var(--sx-aurora-1) 35%, transparent); top: -30vw; left: -20vw; }
+.aurora i:nth-child(2) { background: radial-gradient(closest-side, var(--sx-aurora-2) 35%, transparent); top: 10vw; right: -30vw; }
+
+.grad { background: linear-gradient(100deg, var(--sx-danger) 0%, var(--sx-warning) 45%, var(--sx-accent) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--sx-accent);
+  background: color-mix(in srgb, var(--sx-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--sx-accent) 30%, transparent); }
+.chip .material-symbols-rounded { font-size: 16px; }
+

@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { Actualizacion } from '../core/api';
 import { fecha, num } from '../core/formato';
+import { Sesion } from '../core/sesion';
 import { SentinelStore } from '../core/store';
 import { Vacio } from '../shared/ui';
 
@@ -76,7 +77,9 @@ const CHECKLIST = [
                 }
               </fieldset>
               <label class="campo"><span class="sx-eyebrow">Responsable</span>
-                <input [ngModel]="responsable()" (ngModelChange)="responsable.set($event)" placeholder="Nombre de quien decide" autocomplete="name" /></label>
+                <div class="firmante"><span class="avatar humano">{{ iniciales() }}</span><div><b>{{ responsable() }}</b>
+                  <small class="sx-muted">Usuario de la sesión: la decisión queda firmada a su nombre</small></div>
+                  <span class="material-symbols-rounded verif" aria-hidden="true">verified_user</span></div></label>
               <label class="campo"><span class="sx-eyebrow">Justificación (mínimo 15 caracteres)</span>
                 <textarea rows="4" [ngModel]="justificacion()" (ngModelChange)="justificacion.set($event)"
                           placeholder="Por qué se activa o se rechaza esta versión…"></textarea>
@@ -88,7 +91,7 @@ const CHECKLIST = [
                 <button class="sx-btn success lg activar" [disabled]="!puedeActivar() || store.ocupado().decidir" (click)="confirmar.set('activar')">
                   <span class="material-symbols-rounded">rocket_launch</span>Activar {{ cand()!.id }}</button>
               </div>
-              @if (!puedeActivar()) { <p class="sx-muted pista">Para activar: marque los 4 puntos, indique el responsable y escriba la justificación.</p> }
+              @if (!puedeActivar()) { <p class="sx-muted pista">Para activar: marque los 4 puntos y escriba la justificación.</p> }
             </section>
           </div>
 
@@ -161,6 +164,8 @@ const CHECKLIST = [
     .checklist label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--sx-border); background: var(--sx-panel); }
     .checklist input { width: 18px; height: 18px; accent-color: var(--sx-success); margin-top: 1px; }
     .campo { display: flex; flex-direction: column; gap: 6px; }
+    .firmante { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--sx-panel); border: 1px solid var(--sx-border); }
+    .firmante small { display: block; } .firmante .verif { margin-left: auto; color: var(--sx-success); }
     .campo input, .campo textarea { background: var(--sx-panel); border: 1px solid var(--sx-border-strong); border-radius: 10px; padding: 10px 12px; color: var(--sx-text); font: 14px var(--sx-font); resize: vertical; }
     .campo input:focus, .campo textarea:focus { outline: none; border-color: var(--sx-accent); box-shadow: var(--sx-glow); }
     .botones { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
@@ -198,7 +203,8 @@ export class Decision {
   protected num = num;
   protected f = (s: string) => fecha(s);
   protected marcas = signal(CHECKLIST.map(() => false));
-  protected responsable = signal('');
+  private sesion = inject(Sesion);
+  protected responsable = computed(() => this.sesion.usuario()?.nombre ?? '');
   protected justificacion = signal('');
   protected confirmar = signal<'activar' | 'rechazar' | null>(null);
   protected celebrar = signal<string | null>(null);

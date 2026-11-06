@@ -6,19 +6,26 @@
 //       y cualquier ruta que no sea /api devuelve index.html (navegación de una SPA). --host por defecto 0.0.0.0.
 //
 // Endpoints:
-//   GET  /api/salud                         el servicio está vivo
+//   GET  /api/salud                         el servicio está vivo (público)
+//   POST /api/auth/login                    {"usuario","clave"} → cookie de sesión HttpOnly (público, con límite de intentos)
+//   POST /api/auth/logout · GET /api/auth/sesion
+//   POST /api/auth/solicitud                pide acceso: {"nombre","correo","organizacion","tipo","motivo"} (público, 5 intentos por hora por IP)
+//   Todo lo demás de /api exige sesión (middleware Autenticacion) y respeta el rol. La interfaz y estudio/estudio.json son públicos.
+//   POST /api/cuenta/clave                  {"actual","nueva"}: cambia la propia contraseña (cualquier rol)
+//   GET  /api/descargas · GET /api/descargas/<archivo>   ficha y archivos del modelo activo (cualquier rol)
+//   GET  /api/admin/solicitudes · POST /api/admin/solicitudes/<id>   {"accion":"aprobar"|"rechazar","rol","usuario","nota"} (admin)
+//   GET  /api/admin/usuarios · POST /api/admin/usuarios {"usuario","nombre","rol","correo"}
+//   POST /api/admin/usuarios/<usuario>      {"accion":"rol"|"restablecer"|"eliminar","rol"} (admin)
 //   GET  /api/modelo                        metadatos del modelo activo y registro de versiones
 //   POST /api/eda                           EDA automático de cualquier CSV (aunque sea incompatible con el modelo)
 //   POST /api/validar?modo=prediccion       valida un CSV (multipart, campo "archivo"); modo=entrenamiento exige el objetivo
 //   POST /api/predecir                      valida y, solo si no hay errores, predice con el modelo activo
 //                                           (archivo incompatible: HTTP 409 con el reporte y sin predicciones)
 //   POST /api/actualizar                    datos etiquetados: valida, hace EDA, Python entrena una CANDIDATA y la compara
-//   POST /api/modelo/decision               {"version","accion":"activar"|"rechazar","justificacion","responsable"}
+//   POST /api/modelo/decision               {"version","accion":"activar"|"rechazar","justificacion"}; el responsable es el usuario de la sesión
 //   GET  /api/reportes/<id>/<archivo>       descarga un reporte generado (compatibilidad.html|json, predicciones.csv, ...)
 #define CROW_MAIN
 #include <crow.h>
-
-#include <crow/middlewares/cors.h>
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +36,8 @@
 #include <regex>
 #include <set>
 
+#include "autenticacion.h"
+#include "database.h"
 #include "eda.h"
 #include "entrenamiento.h"
 #include "modelo.h"
@@ -149,13 +158,223 @@ int main(int argc, char** argv) {
     Contexto ctx{fs::absolute(shared), GestorModelo(fs::absolute(shared)),
                  Entrenamiento(python.find('/') == std::string::npos ? fs::path(python) : fs::absolute(python), fs::absolute(ml))};
     fs::create_directories(ctx.shared / "reportes");
+    BaseDatosUsuarios cuentas(ctx.shared / "config" / "sentinel.db");
+    Sesiones sesiones(cuentas);
+    Limitador limite_solicitudes(5, std::chrono::hours(1));
+    if (cuentas.cantidad_usuarios() == 0)
+        CROW_LOG_WARNING << "No hay usuarios: nadie podrá entrar a la plataforma. Cree uno con "
+                            "'python -m app.usuarios crear <usuario> --nombre \"...\"' en ml-service/";
 
-    crow::App<crow::CORSHandler> app;
-    // En producción Nginx sirve Angular y la API en el mismo dominio; CORS abierto solo ayuda en desarrollo (ng serve)
-    app.get_middleware<crow::CORSHandler>().global().origin("*").methods("GET"_method, "POST"_method).headers("Content-Type");
+    // Sin CORS: en producción la interfaz y la API comparten dominio, y en desarrollo ng serve usa un proxy.
+    // Así la cookie de sesión (SameSite=Strict) nunca sale hacia otros orígenes.
+    crow::App<Autenticacion> app;
+    app.get_middleware<Autenticacion>().sesiones = &sesiones;
+
+    CROW_ROUTE(app, "/api/auth/login").methods("POST"_method)([&](const crow::request& req) {
+        const std::string ip = ip_cliente(req);
+        int espera = 0;
+        if (!sesiones.permitido(ip, espera))
+            return error_resp(429, "Demasiados intentos fallidos. Espere " + std::to_string((espera + 59) / 60) + " min.");
+        json s = json::parse(req.body, nullptr, false);
+        if (s.is_discarded() || !s.contains("usuario") || !s.contains("clave"))
+            return error_resp(400, "Envíe usuario y contraseña.");
+        Usuario u;
+        auto token = sesiones.iniciar(s.value("usuario", ""), s.value("clave", ""), u);
+        if (!token) {
+            sesiones.registrar_fallo(ip);
+            CROW_LOG_WARNING << "Inicio de sesión fallido desde " << ip;
+            return error_resp(401, "Usuario o contraseña incorrectos.");
+        }
+        sesiones.limpiar_fallos(ip);
+        CROW_LOG_INFO << "Sesión iniciada: " << u.usuario << " desde " << ip;
+        auto r = json_resp(200, {{"usuario", u.usuario}, {"nombre", u.nombre}, {"rol", u.rol}, {"debe_cambiar", u.debe_cambiar}});
+        r.set_header("Set-Cookie", cookie_sesion(req, *token, int(std::chrono::seconds(Sesiones::DURACION).count())));
+        return r;
+    });
+
+    CROW_ROUTE(app, "/api/auth/logout").methods("POST"_method)([&](const crow::request& req) {
+        sesiones.cerrar(leer_cookie(req, "sx_sesion"));
+        auto r = json_resp(200, {{"ok", true}});
+        r.set_header("Set-Cookie", cookie_sesion(req, "", 0));
+        return r;
+    });
+
+    // Pública: la landing pregunta si hay sesión sin provocar un 401
+    CROW_ROUTE(app, "/api/auth/sesion")([&](const crow::request& req) {
+        auto u = sesiones.validar(leer_cookie(req, "sx_sesion"));
+        if (!u) return json_resp(200, {{"activa", false}});
+        return json_resp(200, {{"activa", true}, {"usuario", u->usuario}, {"nombre", u->nombre}, {"rol", u->rol}, {"debe_cambiar", u->debe_cambiar}});
+    });
+
+    // Errores de las cuentas: el mensaje es para la persona y trae su código HTTP
+    auto cuenta_err = [](const std::exception& e) {
+        if (auto* c = dynamic_cast<const ErrorCuenta*>(&e)) return error_resp(c->codigo, c->what());
+        CROW_LOG_ERROR << "Cuentas: " << e.what();
+        return error_resp(500, "No se pudo completar la operación.");
+    };
+    auto usuario_de = [&](const crow::request& req) -> const Usuario& { return *app.get_context<Autenticacion>(req).usuario; };
+
+    // Pública: cualquiera puede pedir acceso; un administrador decide. Campo trampa "sitio_web" contra robots.
+    CROW_ROUTE(app, "/api/auth/solicitud").methods("POST"_method)([&](const crow::request& req) {
+        json d = json::parse(req.body, nullptr, false);
+        if (d.is_discarded() || !d.is_object()) return error_resp(400, "Envíe la solicitud en formato JSON.");
+        if (!d.value("sitio_web", "").empty()) return json_resp(201, {{"ok", true}});  // robot: se finge éxito
+        if (!limite_solicitudes.permitir(ip_cliente(req)))
+            return error_resp(429, "Ya envió varias solicitudes. Espere una hora antes de enviar otra.");
+        try {
+            cuentas.crear_solicitud(d);
+            CROW_LOG_INFO << "Nueva solicitud de acceso desde " << ip_cliente(req);
+            return json_resp(201, {{"ok", true}});
+        } catch (const std::exception& e) { return cuenta_err(e); }
+    });
+
+    CROW_ROUTE(app, "/api/cuenta/clave").methods("POST"_method)([&](const crow::request& req) {
+        json d = json::parse(req.body, nullptr, false);
+        if (d.is_discarded() || !d.contains("actual") || !d.contains("nueva")) return error_resp(400, "Envíe la contraseña actual y la nueva.");
+        const Usuario& u = usuario_de(req);
+        try {
+            cuentas.cambiar_clave(u.usuario, d.value("actual", ""), d.value("nueva", ""));
+            Usuario nuevo = u;
+            nuevo.debe_cambiar = false;
+            sesiones.actualizar(u.usuario, nuevo);
+            CROW_LOG_INFO << "Contraseña cambiada: " << u.usuario;
+            return json_resp(200, {{"ok", true}, {"usuario", nuevo.usuario}, {"nombre", nuevo.nombre}, {"rol", nuevo.rol}, {"debe_cambiar", false}});
+        } catch (const std::exception& e) { return cuenta_err(e); }
+    });
+
+    // --- Administración (solo admin: lo controla el middleware) ----------------------------------------------------
+    CROW_ROUTE(app, "/api/admin/solicitudes")([&] {
+        try {
+            json lista = cuentas.listar_solicitudes();
+            size_t pendientes = 0;
+            for (const auto& s : lista) if (s.value("estado", "") == "pendiente") ++pendientes;
+            return json_resp(200, {{"solicitudes", lista}, {"pendientes", pendientes}});
+        } catch (const std::exception& e) { return cuenta_err(e); }
+    });
+
+    CROW_ROUTE(app, "/api/admin/solicitudes/<string>").methods("POST"_method)([&](const crow::request& req, const std::string& id) {
+        json d = json::parse(req.body, nullptr, false);
+        if (d.is_discarded() || !d.is_object()) return error_resp(400, "Solicitud mal formada.");
+        const std::string accion = d.value("accion", "");
+        if (accion != "aprobar" && accion != "rechazar") return error_resp(400, "La acción debe ser aprobar o rechazar.");
+        try {
+            const std::string quien = usuario_de(req).nombre;
+            json r = cuentas.resolver(id, accion == "aprobar", d.value("rol", ""), d.value("usuario", ""), d.value("nota", ""), quien);
+            CROW_LOG_INFO << "Solicitud " << id << " " << (accion == "aprobar" ? "aprobada" : "rechazada") << " por " << usuario_de(req).usuario;
+            return json_resp(200, r);
+        } catch (const std::exception& e) { return cuenta_err(e); }
+    });
+
+    CROW_ROUTE(app, "/api/admin/usuarios").methods("GET"_method, "POST"_method)([&](const crow::request& req) {
+        try {
+            if (req.method == crow::HTTPMethod::Get) return json_resp(200, {{"usuarios", cuentas.listar_usuarios()}});
+            json d = json::parse(req.body, nullptr, false);
+            if (d.is_discarded() || !d.is_object()) return error_resp(400, "Solicitud mal formada.");
+            const std::string usuario = d.value("usuario", "");
+            const std::string clave = cuentas.crear_usuario(usuario, d.value("nombre", ""), d.value("rol", ""), d.value("correo", ""));
+            CROW_LOG_INFO << "Usuario creado: " << usuario << " por " << usuario_de(req).usuario;
+            return json_resp(201, {{"usuario", usuario}, {"clave_temporal", clave}});
+        } catch (const std::exception& e) { return cuenta_err(e); }
+    });
+
+    CROW_ROUTE(app, "/api/admin/usuarios/<string>").methods("POST"_method)([&](const crow::request& req, const std::string& usuario) {
+        json d = json::parse(req.body, nullptr, false);
+        if (d.is_discarded() || !d.is_object()) return error_resp(400, "Solicitud mal formada.");
+        const std::string accion = d.value("accion", ""), quien = usuario_de(req).usuario;
+        try {
+            if (accion == "rol") {
+                cuentas.cambiar_rol(usuario, d.value("rol", ""), quien);
+                sesiones.cerrar_de(usuario);  // con el rol nuevo debe volver a entrar
+                return json_resp(200, {{"ok", true}});
+            }
+            if (accion == "restablecer") {
+                const std::string clave = cuentas.restablecer(usuario);
+                sesiones.cerrar_de(usuario);
+                return json_resp(200, {{"usuario", usuario}, {"clave_temporal", clave}});
+            }
+            if (accion == "eliminar") {
+                cuentas.eliminar(usuario, quien);
+                sesiones.cerrar_de(usuario);
+                return json_resp(200, {{"ok", true}});
+            }
+            return error_resp(400, "Acción no válida.");
+        } catch (const std::exception& e) { return cuenta_err(e); }
+    });
+
+    // --- Descargas del modelo activo (cualquier rol con sesión) ---------------------------------------------------
+    auto leeme = [](const json& m) {
+        std::string s = "SENTINEL · Modelo " + m.value("version", "") + " (Saber 11, puntaje global del año siguiente)\n\n";
+        s += "Qué predice: el puntaje global promedio de Saber 11 (0 a 500) que sacará un municipio o colegio el año siguiente.\n\n";
+        s += "Archivos:\n  modelo.onnx     el modelo en formato ONNX (se abre con ONNX Runtime en Python, C++, C#, Java o JavaScript)\n";
+        s += "  metadata.json   variables, métricas, intervalos y datos de entrenamiento\n  ejemplo_entrada.csv  un archivo de ejemplo con las columnas que necesita\n\n";
+        s += "Entradas (float32, forma [n, 1], una por variable y con este nombre):\n";
+        for (const auto& v : m.value("variables_predictoras", json::array())) s += "  " + v.get<std::string>() + "\n";
+        s += "Salida: 'variable' (float32 [n, 1]), el puntaje predicho.\n\n";
+        if (m.contains("configuracion")) s += "Fórmula: " + m["configuracion"].value("formula", "") + "\n\n";
+        if (m.contains("validacion")) {
+            const auto& v = m["validacion"];
+            char linea[160];
+            std::snprintf(linea, sizeof linea, "Error medio (validación temporal): %.2f puntos en el Chocó y %.2f en el país.\n\n",
+                          v.value("mae_choco", 0.0), v.value("mae_pais", 0.0));
+            s += linea;
+        }
+        s += "Ejemplo en Python:\n  import onnxruntime as ort, numpy as np\n  s = ort.InferenceSession('modelo.onnx')\n";
+        s += "  x = {n.name: np.array([[200.0]], dtype=np.float32) for n in s.get_inputs()}\n  print(s.run(None, x)[0])\n\n";
+        s += "Datos: ICFES, Resultados únicos Saber 11 (datos.gov.co, CC BY-SA 4.0). Cite la fuente si publica resultados.\n";
+        return s;
+    };
+    auto archivos_descarga = [&ctx](const std::string& version) {
+        const fs::path carpeta = ctx.shared / "models" / version;
+        return std::vector<std::tuple<std::string, std::string, fs::path>>{
+            {"modelo.onnx", "El modelo listo para usar con ONNX Runtime", carpeta / "modelo.onnx"},
+            {"metadata.json", "Variables, métricas, intervalos y datos de entrenamiento", carpeta / "metadata.json"},
+            {"ejemplo_entrada.csv", "Un archivo de ejemplo con las columnas que necesita", ctx.shared.parent_path() / "pruebas" / "01_compatible.csv"},
+            {"LEEME.txt", "Cómo usarlo, en pocas líneas", fs::path()}};
+    };
+
+    CROW_ROUTE(app, "/api/descargas")([&] {
+        try {
+            auto m = ctx.modelos.activo();
+            const json& meta = m->metadata();
+            json archivos = json::array();
+            for (const auto& [nombre, descripcion, ruta] : archivos_descarga(m->version())) {
+                const auto bytes = ruta.empty() ? leeme(meta).size() : (fs::exists(ruta) ? fs::file_size(ruta) : 0);
+                if (!ruta.empty() && !fs::exists(ruta)) continue;
+                archivos.push_back({{"nombre", nombre}, {"descripcion", descripcion}, {"bytes", bytes}});
+            }
+            return json_resp(200, {{"version", m->version()}, {"fecha_entrenamiento", meta.value("fecha_entrenamiento", "")},
+                                   {"algoritmo", meta.value("algoritmo", "")}, {"variables", meta.value("variables_predictoras", json::array())},
+                                   {"validacion", meta.value("validacion", json::object())}, {"intervalo_80", meta.value("intervalo_80", json::object())},
+                                   {"registros", meta.contains("datos") ? meta["datos"].value("registros", 0) : 0}, {"archivos", archivos}});
+        } catch (const std::exception& e) { return error_resp(503, e.what()); }
+    });
+
+    CROW_ROUTE(app, "/api/descargas/<string>")([&](const crow::request& req, const std::string& archivo) {
+        try {
+            auto m = ctx.modelos.activo();
+            for (const auto& [nombre, _, ruta] : archivos_descarga(m->version())) {
+                if (nombre != archivo) continue;
+                std::string cuerpo;
+                if (ruta.empty()) cuerpo = leeme(m->metadata());
+                else {
+                    std::ifstream f(ruta, std::ios::binary);
+                    if (!f) return error_resp(404, "Archivo no disponible.");
+                    cuerpo.assign(std::istreambuf_iterator<char>(f), {});
+                }
+                crow::response r(200, cuerpo);
+                const std::string ext = fs::path(nombre).extension().string();
+                r.set_header("Content-Type", ext == ".json" ? "application/json" : ext == ".csv" ? "text/csv; charset=utf-8"
+                                           : ext == ".txt" ? "text/plain; charset=utf-8" : "application/octet-stream");
+                r.set_header("Content-Disposition", "attachment; filename=\"sentinel_" + m->version() + "_" + nombre + "\"");
+                CROW_LOG_INFO << "Descarga " << nombre << " (" << m->version() << ") por " << usuario_de(req).usuario;
+                return r;
+            }
+            return error_resp(404, "Archivo no disponible.");
+        } catch (const std::exception& e) { return error_resp(503, e.what()); }
+    });
 
     CROW_ROUTE(app, "/api/salud")([&] {
-        json j = {{"estado", "ok"}, {"shared", ctx.shared.string()}};
+        json j = {{"estado", "ok"}};
         try { j["modelo_activo"] = ctx.modelos.activo()->version(); } catch (const std::exception& e) { j["modelo_activo"] = nullptr; }
         return json_resp(200, j);
     });
@@ -279,7 +498,8 @@ int main(int argc, char** argv) {
             fs::create_directories(carpeta);
             const fs::path solicitud = carpeta / (id + ".json");
             std::ofstream(solicitud) << json{{"version", s["version"]}, {"accion", s["accion"]},
-                                             {"justificacion", s.value("justificacion", "")}, {"responsable", s.value("responsable", "")},
+                                             {"justificacion", s.value("justificacion", "")},
+                                             {"responsable", app.get_context<Autenticacion>(req).usuario->nombre},
                                              {"fecha", ahora_iso()}}.dump(2);
             json reg = ctx.python.ejecutar("decidir", {"--solicitud", solicitud.string()}, carpeta / "python.log");
             json out = {{"registro", reg}};

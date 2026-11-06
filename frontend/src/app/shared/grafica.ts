@@ -8,7 +8,7 @@ import { Tema } from '../core/tema';
   selector: 'sx-grafica',
   template: `<div #lienzo role="img" [attr.aria-label]="etiqueta()"></div>`,
   // min-width: 0 evita que la gráfica ensanche su tarjeta (y la página) dentro de un grid
-  styles: `:host { display: block; min-height: 40px; min-width: 0; width: 100%; overflow: hidden; }`,
+  styles: `:host { display: block; min-height: 40px; min-width: 0; width: 100%; overflow-x: clip; overflow-y: visible; }`,
 })
 export class Grafica implements OnDestroy {
   readonly opciones = input.required<ApexOptions>();

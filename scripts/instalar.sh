@@ -21,6 +21,8 @@ paso "Revisando requisitos"
 command -v git >/dev/null || falla "Falta git"
 command -v curl >/dev/null || falla "Falta curl"
 CXX_BIN="$(command -v g++ || command -v clang++ || true)"; [ -n "$CXX_BIN" ] || falla "Falta un compilador C++ (g++ o clang++)"
+printf '#include <sqlite3.h>\nint main(){return 0;}\n' | "$CXX_BIN" -x c++ - -lsqlite3 -o /dev/null 2>/dev/null ||
+  falla "Falta SQLite3 de desarrollo (en Debian/Ubuntu: sudo apt install libsqlite3-dev)"
 command -v python3 >/dev/null || falla "Falta Python 3"
 command -v node >/dev/null || falla "Falta Node.js 20 o superior"
 NODE_MAYOR="$(node -p 'process.versions.node.split(".")[0]')"

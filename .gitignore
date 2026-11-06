@@ -25,3 +25,8 @@ shared/data/versiones/
 .vs/
 .vscode/
 descargas/
+
+# Cuentas de la plataforma en SQLite (hashes de contraseñas): nunca a git
+shared/config/sentinel.db
+shared/config/sentinel.db-wal
+shared/config/sentinel.db-shm

@@ -1,0 +1,78 @@
+<a class="saltar" href="#lectura">Saltar a la lectura</a>
+<div class="art-aurora" aria-hidden="true"><i></i><i></i></div>
+<sx-cabecera />
+<div class="art-barra" [style.transform]="'scaleX(' + progreso() + ')'" aria-hidden="true"></div>
+
+<div class="art">
+  <aside class="art-indice" aria-label="Capítulos">
+    <div class="art-indice-cab">
+      <span class="material-symbols-rounded" aria-hidden="true">auto_stories</span>
+      <div><b>Cómo lo hicimos</b><small>{{ capitulos.length }} capítulos · {{ minutosTotales }} min</small></div>
+    </div>
+    <ol>
+      @for (c of capitulos; track c.id; let i = $index) {
+        <li>
+          <a [routerLink]="['/proceso', c.id]" [class.sel]="c.id === cap().id" [class.leido]="leidos().has(c.id)" [attr.aria-current]="c.id === cap().id ? 'page' : null">
+            <span class="n">@if (leidos().has(c.id) && c.id !== cap().id) { <span class="material-symbols-rounded" aria-label="Leído">check</span> } @else { <span>{{ i + 1 }}</span> }</span>
+            <span class="t">{{ c.titulo }}<small>{{ c.minutos }} min</small></span>
+          </a>
+        </li>
+      }
+    </ol>
+    <a class="art-indice-glosario" routerLink="/glosario"><span class="material-symbols-rounded" aria-hidden="true">menu_book</span>¿Una palabra rara? Glosario</a>
+  </aside>
+
+  <main id="lectura" class="art-main" tabindex="-1">
+    <!-- Selector de capítulo en pantallas pequeñas -->
+    <div class="art-movil">
+      <button (click)="menuCapitulos.set(!menuCapitulos())" [attr.aria-expanded]="menuCapitulos()" aria-controls="art-movil-lista">
+        <span>Capítulo {{ indice() + 1 }} de {{ capitulos.length }} · <b>{{ cap().titulo }}</b></span>
+        <span class="material-symbols-rounded" aria-hidden="true">{{ menuCapitulos() ? 'expand_less' : 'expand_more' }}</span>
+      </button>
+      @if (menuCapitulos()) {
+        <ol id="art-movil-lista">
+          @for (c of capitulos; track c.id; let i = $index) {
+            <li><a [routerLink]="['/proceso', c.id]" [class.sel]="c.id === cap().id">
+              <span class="n">{{ i + 1 }}</span>{{ c.titulo }}@if (leidos().has(c.id)) {<span class="material-symbols-rounded ok" aria-label="Leído">check</span>}</a></li>
+          }
+        </ol>
+      }
+    </div>
+
+    @if (indice() === 0) {
+      <p class="art-serie"><span class="material-symbols-rounded" aria-hidden="true">auto_stories</span>Un artículo en {{ capitulos.length }} capítulos cortos · {{ minutosTotales }} minutos en total. Puede leerlos en orden o saltar al que le interese.</p>
+    }
+
+    <header class="art-cabeza">
+      <div class="art-num"><span class="material-symbols-rounded" aria-hidden="true">{{ cap().icono }}</span>Capítulo {{ indice() + 1 }} de {{ capitulos.length }} · {{ cap().minutos }} min de lectura</div>
+      <h1>{{ cap().titulo }}</h1>
+      <p>{{ cap().bajada }}</p>
+    </header>
+
+    @switch (cap().id) {
+      @case ('pregunta') { <sx-cap-pregunta /> }
+      @case ('datos') { <sx-cap-datos /> }
+      @case ('limpieza') { <sx-cap-limpieza /> }
+      @case ('exploracion') { <sx-cap-exploracion /> }
+      @case ('causas') { <sx-cap-causas /> }
+      @case ('modelo') { <sx-cap-modelo /> }
+      @case ('plataforma') { <sx-cap-plataforma /> }
+      @case ('gobierno') { <sx-cap-gobierno /> }
+      @case ('cierre') { <sx-cap-cierre /> }
+    }
+
+    <div class="art-fin" aria-hidden="true"></div>
+    <nav class="art-nav" aria-label="Otros capítulos">
+      @if (anterior(); as a) {
+        <a class="previo" [routerLink]="['/proceso', a.id]"><small><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>Capítulo anterior</small><b>{{ a.titulo }}</b></a>
+      } @else { <span></span> }
+      @if (siguiente(); as s) {
+        <a class="proximo" [routerLink]="['/proceso', s.id]">
+          <small>Sigue · capítulo {{ indice() + 2 }} · {{ s.minutos }} min<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></small>
+          <b>{{ s.titulo }}</b><span class="bajada">{{ s.bajada }}</span></a>
+      } @else {
+        <a class="proximo" routerLink="/"><small>Fin del artículo<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></small><b>Ver los resultados del estudio</b><span class="bajada">Mapas y gráficas interactivas</span></a>
+      }
+    </nav>
+  </main>
+</div>

@@ -2,131 +2,31 @@
 
 #include <sqlite3.h>
 
-#include <array>
+#include <chrono>
 #include <cstdint>
-#include <random>
+#include <ctime>
+#include <regex>
+#include <set>
 #include <stdexcept>
 #include <string>
-#include <vector>
+
+#include "cripto.h"
 
 namespace {
 
-constexpr std::uint32_t rotar_derecha(std::uint32_t valor, std::uint32_t posiciones) {
-    return (valor >> posiciones) | (valor << (32 - posiciones));
-}
+const std::string HASH_FICTICIO =
+    "pbkdf2_sha256$210000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+const std::set<std::string> ROLES = {"admin", "colaborador", "descarga"};
+const std::set<std::string> TIPOS_SOLICITUD = {"colaborador", "descarga"};
+constexpr std::size_t MAX_PENDIENTES = 300;
 
-std::array<std::uint8_t, 32> sha256(const std::string& entrada) {
-    static constexpr std::array<std::uint32_t, 64> k = {
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
-
-    std::array<std::uint32_t, 8> estado = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
-                                           0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
-
-    std::vector<std::uint8_t> mensaje(entrada.begin(), entrada.end());
-    const std::uint64_t bits = static_cast<std::uint64_t>(mensaje.size()) * 8;
-    mensaje.push_back(0x80);
-    while (mensaje.size() % 64 != 56) mensaje.push_back(0x00);
-    for (int i = 7; i >= 0; --i) mensaje.push_back(static_cast<std::uint8_t>((bits >> (i * 8)) & 0xff));
-
-    for (std::size_t desplazamiento = 0; desplazamiento < mensaje.size(); desplazamiento += 64) {
-        std::array<std::uint32_t, 64> w{};
-        for (int i = 0; i < 16; ++i) {
-            w[i] = (static_cast<std::uint32_t>(mensaje[desplazamiento + i * 4]) << 24) |
-                   (static_cast<std::uint32_t>(mensaje[desplazamiento + i * 4 + 1]) << 16) |
-                   (static_cast<std::uint32_t>(mensaje[desplazamiento + i * 4 + 2]) << 8) |
-                   static_cast<std::uint32_t>(mensaje[desplazamiento + i * 4 + 3]);
-        }
-        for (int i = 16; i < 64; ++i) {
-            const std::uint32_t s0 =
-                rotar_derecha(w[i - 15], 7) ^ rotar_derecha(w[i - 15], 18) ^ (w[i - 15] >> 3);
-            const std::uint32_t s1 =
-                rotar_derecha(w[i - 2], 17) ^ rotar_derecha(w[i - 2], 19) ^ (w[i - 2] >> 10);
-            w[i] = w[i - 16] + s0 + w[i - 7] + s1;
-        }
-
-        std::uint32_t a = estado[0], b = estado[1], c = estado[2], d = estado[3];
-        std::uint32_t e = estado[4], f = estado[5], g = estado[6], h = estado[7];
-
-        for (int i = 0; i < 64; ++i) {
-            const std::uint32_t s1 = rotar_derecha(e, 6) ^ rotar_derecha(e, 11) ^ rotar_derecha(e, 25);
-            const std::uint32_t ch = (e & f) ^ (~e & g);
-            const std::uint32_t temp1 = h + s1 + ch + k[i] + w[i];
-            const std::uint32_t s0 = rotar_derecha(a, 2) ^ rotar_derecha(a, 13) ^ rotar_derecha(a, 22);
-            const std::uint32_t maj = (a & b) ^ (a & c) ^ (b & c);
-            const std::uint32_t temp2 = s0 + maj;
-
-            h = g;
-            g = f;
-            f = e;
-            e = d + temp1;
-            d = c;
-            c = b;
-            b = a;
-            a = temp1 + temp2;
-        }
-
-        estado[0] += a;
-        estado[1] += b;
-        estado[2] += c;
-        estado[3] += d;
-        estado[4] += e;
-        estado[5] += f;
-        estado[6] += g;
-        estado[7] += h;
-    }
-
-    std::array<std::uint8_t, 32> salida{};
-    for (int i = 0; i < 8; ++i) {
-        salida[i * 4] = static_cast<std::uint8_t>(estado[i] >> 24);
-        salida[i * 4 + 1] = static_cast<std::uint8_t>(estado[i] >> 16);
-        salida[i * 4 + 2] = static_cast<std::uint8_t>(estado[i] >> 8);
-        salida[i * 4 + 3] = static_cast<std::uint8_t>(estado[i]);
-    }
+std::string fecha_iso() {
+    const std::time_t ahora = std::time(nullptr);
+    std::tm local{};
+    localtime_r(&ahora, &local);
+    char salida[32];
+    std::strftime(salida, sizeof salida, "%Y-%m-%dT%H:%M:%S", &local);
     return salida;
-}
-
-std::string a_hex(const std::uint8_t* datos, std::size_t cantidad) {
-    static constexpr char digitos[] = "0123456789abcdef";
-    std::string salida;
-    salida.reserve(cantidad * 2);
-    for (std::size_t i = 0; i < cantidad; ++i) {
-        salida.push_back(digitos[datos[i] >> 4]);
-        salida.push_back(digitos[datos[i] & 0x0f]);
-    }
-    return salida;
-}
-
-std::string nuevo_salt() {
-    std::array<std::uint8_t, 16> bytes{};
-    std::random_device aleatorio;
-    for (auto& byte : bytes) byte = static_cast<std::uint8_t>(aleatorio());
-    return a_hex(bytes.data(), bytes.size());
-}
-
-std::string proteger_password(const std::string& password) {
-    constexpr int iteraciones = 100000;
-    const std::string salt = nuevo_salt();
-    const std::string inicial = salt + password;
-    auto resumen = sha256(inicial);
-    std::string material;
-    material.reserve(64);
-    for (int i = 0; i < iteraciones; ++i) {
-        material.assign(reinterpret_cast<const char*>(resumen.data()), resumen.size());
-        material += salt;
-        resumen = sha256(material);
-    }
-    return "sha256$" + std::to_string(iteraciones) + "$" + salt + "$" + a_hex(resumen.data(), resumen.size());
-}
-
-void exigir(const std::string& valor, const std::string& campo) {
-    if (valor.empty()) throw std::runtime_error("El campo '" + campo + "' es obligatorio.");
 }
 
 [[noreturn]] void lanzar_error(sqlite3* db, const std::string& contexto) {
@@ -173,9 +73,25 @@ public:
             lanzar_error(db_, "No se pudo enlazar un valor nulo");
     }
 
+    bool paso() {
+        const int rc = sqlite3_step(stmt_);
+        if (rc == SQLITE_ROW) return true;
+        if (rc == SQLITE_DONE) return false;
+        lanzar_error(db_, "No se pudo ejecutar la consulta");
+    }
+
     void ejecutar() {
         if (sqlite3_step(stmt_) != SQLITE_DONE) lanzar_error(db_, "No se pudo ejecutar la consulta");
     }
+
+    std::string texto_columna(int indice) const {
+        const unsigned char* valor = sqlite3_column_text(stmt_, indice);
+        return valor ? reinterpret_cast<const char*>(valor) : "";
+    }
+
+    std::int64_t entero_columna(int indice) const { return sqlite3_column_int64(stmt_, indice); }
+
+    bool nula_columna(int indice) const { return sqlite3_column_type(stmt_, indice) == SQLITE_NULL; }
 
 private:
     sqlite3* db_;
@@ -219,69 +135,94 @@ void crear_esquema(sqlite3* db) {
     const std::string sql = R"sql(
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre_completo TEXT NOT NULL,
-            correo TEXT NOT NULL COLLATE NOCASE UNIQUE,
-            organizacion TEXT NOT NULL,
-            comentario TEXT NOT NULL,
-            cargo TEXT NOT NULL DEFAULT '',
-            telefono TEXT NOT NULL DEFAULT '',
-            ciudad TEXT NOT NULL DEFAULT '',
-            departamento TEXT NOT NULL DEFAULT '',
-            pais TEXT NOT NULL DEFAULT 'Colombia',
-            rol TEXT NOT NULL DEFAULT 'analista',
-            estado TEXT NOT NULL DEFAULT 'pendiente',
-            fecha_solicitud TEXT NOT NULL DEFAULT (datetime('now')),
-            fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now'))
+            usuario TEXT NOT NULL COLLATE NOCASE UNIQUE,
+            nombre TEXT NOT NULL,
+            correo TEXT NOT NULL DEFAULT '' COLLATE NOCASE,
+            organizacion TEXT NOT NULL DEFAULT '',
+            rol TEXT NOT NULL DEFAULT 'admin' CHECK (rol IN ('admin', 'colaborador', 'descarga')),
+            hash TEXT NOT NULL,
+            debe_cambiar INTEGER NOT NULL DEFAULT 1 CHECK (debe_cambiar IN (0, 1)),
+            creado TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS credenciales (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            usuario_id INTEGER NOT NULL UNIQUE,
-            username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-            password TEXT NOT NULL,
-            activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
-            ultimo_acceso TEXT,
-            fecha_creacion TEXT NOT NULL DEFAULT (datetime('now')),
-            fecha_actualizacion TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
+
+        CREATE TABLE IF NOT EXISTS solicitudes (
+            id TEXT PRIMARY KEY,
+            fecha TEXT NOT NULL,
+            nombre TEXT NOT NULL,
+            correo TEXT NOT NULL COLLATE NOCASE,
+            organizacion TEXT NOT NULL DEFAULT '',
+            tipo TEXT NOT NULL CHECK (tipo IN ('colaborador', 'descarga')),
+            motivo TEXT NOT NULL,
+            estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobada', 'rechazada')),
+            usuario_creado TEXT,
+            rol_asignado TEXT,
+            resuelta_por TEXT,
+            resuelta_fecha TEXT,
+            resuelta_nota TEXT
         );
 
-        CREATE INDEX IF NOT EXISTS idx_usuarios_estado ON usuarios(estado);
+        CREATE INDEX IF NOT EXISTS idx_solicitudes_estado ON solicitudes(estado);
+        CREATE INDEX IF NOT EXISTS idx_solicitudes_correo ON solicitudes(correo);
         )sql";
-    ejecutar_sql(db, sql, "No se pudo crear el esquema de usuarios");
+    ejecutar_sql(db, sql, "No se pudo crear el esquema de cuentas");
 }
 
-void validar_usuario(const Usuario& usuario) {
-    exigir(usuario.nombre_completo, "nombre_completo");
-    exigir(usuario.correo, "correo");
-    exigir(usuario.organizacion, "organizacion");
-    exigir(usuario.comentario, "comentario");
+std::string limpio(const nlohmann::json& d, const char* campo, std::size_t maximo) {
+    std::string s = d.contains(campo) && d[campo].is_string() ? d[campo].get<std::string>() : "";
+    std::string r;
+    for (unsigned char c : s)
+        if (c >= 32 || c == '\n') r += char(c);
+    const auto ini = r.find_first_not_of(" \n"), fin = r.find_last_not_of(" \n");
+    r = ini == std::string::npos ? "" : r.substr(ini, fin - ini + 1);
+    if (r.size() > maximo) throw ErrorCuenta(400, std::string("El campo «") + campo + "» es demasiado largo.");
+    return r;
 }
 
-void insertar_credencial(sqlite3* db, std::int64_t usuario_id, const Credencial& credencial) {
-    exigir(credencial.username, "username");
-    exigir(credencial.password, "password");
-
+std::string insertar_usuario(sqlite3* db, const std::string& usuario, const std::string& nombre,
+                             const std::string& rol, const std::string& correo) {
+    const std::string clave = cripto::clave_temporal();
     Sentencia s(db,
-                "INSERT INTO credenciales (usuario_id, username, password, activo, ultimo_acceso) "
-                "VALUES (?, ?, ?, ?, ?)");
-    s.entero(1, usuario_id);
-    s.texto(2, credencial.username);
-    s.texto(3, proteger_password(credencial.password));
-    s.entero(4, credencial.activo ? 1 : 0);
-    if (credencial.ultimo_acceso.empty())
-        s.nulo(5);
-    else
-        s.texto(5, credencial.ultimo_acceso);
+                "INSERT INTO usuarios (usuario, nombre, correo, rol, hash, debe_cambiar, creado) "
+                "VALUES (?, ?, ?, ?, ?, 1, ?)");
+    s.texto(1, usuario);
+    s.texto(2, nombre);
+    s.texto(3, correo);
+    s.texto(4, rol);
+    s.texto(5, cripto::cifrar_clave(clave));
+    s.texto(6, fecha_iso());
     s.ejecutar();
+    return clave;
+}
+
+std::size_t contar_admins(sqlite3* db) {
+    Sentencia s(db, "SELECT COUNT(*) FROM usuarios WHERE rol = 'admin'");
+    s.paso();
+    return static_cast<std::size_t>(s.entero_columna(0));
+}
+
+void validar_usuario_nuevo(const std::string& usuario, const std::string& nombre, const std::string& rol) {
+    if (!usuario_valido(usuario))
+        throw ErrorCuenta(400, "El usuario debe tener de 3 a 32 caracteres: letras minúsculas, números, punto o guion.");
+    if (!rol_valido(rol)) throw ErrorCuenta(400, "Rol no válido.");
+    if (nombre.size() < 3) throw ErrorCuenta(400, "Escriba el nombre de la persona.");
 }
 
 }  // namespace
 
-BaseDatosUsuarios::BaseDatosUsuarios(const std::string& archivo) {
-    if (archivo.empty()) throw std::runtime_error("La ruta de la base de datos de usuarios esta vacia.");
+bool rol_valido(const std::string& rol) { return ROLES.count(rol) > 0; }
 
-    const int rc = sqlite3_open_v2(archivo.c_str(), &db_,
+bool usuario_valido(const std::string& usuario) {
+    return std::regex_match(usuario, std::regex("^[a-z0-9._-]{3,32}$"));
+}
+
+BaseDatosUsuarios::BaseDatosUsuarios(const std::filesystem::path& archivo) {
+    if (archivo.empty()) throw std::runtime_error("La ruta de la base de datos de cuentas esta vacia.");
+    if (!archivo.parent_path().empty()) std::filesystem::create_directories(archivo.parent_path());
+
+    const std::string ruta = archivo.string();
+    const int rc = sqlite3_open_v2(ruta.c_str(), &db_,
                                    SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
     if (rc != SQLITE_OK) {
         const std::string detalle = db_ ? sqlite3_errmsg(db_) : "no se pudo abrir el archivo";
@@ -289,12 +230,13 @@ BaseDatosUsuarios::BaseDatosUsuarios(const std::string& archivo) {
             sqlite3_close(db_);
             db_ = nullptr;
         }
-        throw std::runtime_error("No se pudo abrir la base de datos de usuarios: " + detalle);
+        throw std::runtime_error("No se pudo abrir la base de datos de cuentas: " + detalle);
     }
 
     try {
         sqlite3_busy_timeout(db_, 5000);
         ejecutar_sql(db_, "PRAGMA foreign_keys = ON", "No se pudo activar las claves foraneas");
+        ejecutar_sql(db_, "PRAGMA journal_mode = WAL", "No se pudo activar el modo WAL");
         crear_esquema(db_);
     } catch (...) {
         sqlite3_close(db_);
@@ -307,98 +249,255 @@ BaseDatosUsuarios::~BaseDatosUsuarios() {
     if (db_) sqlite3_close(db_);
 }
 
-std::int64_t BaseDatosUsuarios::crear_usuario(const Usuario& usuario, const Credencial& credencial) {
-    validar_usuario(usuario);
-    exigir(credencial.username, "username");
-    exigir(credencial.password, "password");
+// --- Usuarios ---------------------------------------------------------------------------------------------------
+std::optional<Usuario> BaseDatosUsuarios::verificar(const std::string& usuario, const std::string& clave) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Sentencia s(db_, "SELECT usuario, nombre, rol, debe_cambiar, hash FROM usuarios WHERE usuario = ?");
+    s.texto(1, usuario);
+    const bool existe = s.paso();
+    const std::string almacenado = existe ? s.texto_columna(4) : HASH_FICTICIO;
+    const bool ok = cripto::verificar_clave(clave, almacenado);
+    if (!existe || !ok) return std::nullopt;
 
-    Transaccion tx(db_);
-
-    Sentencia s(db_,
-                "INSERT INTO usuarios (nombre_completo, correo, organizacion, comentario, cargo, telefono, "
-                "ciudad, departamento, pais, rol, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    s.texto(1, usuario.nombre_completo);
-    s.texto(2, usuario.correo);
-    s.texto(3, usuario.organizacion);
-    s.texto(4, usuario.comentario);
-    s.texto(5, usuario.cargo);
-    s.texto(6, usuario.telefono);
-    s.texto(7, usuario.ciudad);
-    s.texto(8, usuario.departamento);
-    s.texto(9, usuario.pais);
-    s.texto(10, usuario.rol);
-    s.texto(11, usuario.estado);
-    s.ejecutar();
-
-    const std::int64_t id = sqlite3_last_insert_rowid(db_);
-    insertar_credencial(db_, id, credencial);
-    tx.confirmar();
-    return id;
+    std::string rol = s.texto_columna(2);
+    if (!rol_valido(rol)) rol = "admin";
+    return Usuario{s.texto_columna(0), s.texto_columna(1), rol, s.entero_columna(3) != 0};
 }
 
-void BaseDatosUsuarios::modificar_usuario(std::int64_t id, const Usuario& usuario,
-                                          const std::optional<Credencial>& credencial) {
-    if (id <= 0) throw std::runtime_error("El id del usuario no es valido.");
-    validar_usuario(usuario);
+std::optional<Usuario> BaseDatosUsuarios::buscar(const std::string& usuario) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Sentencia s(db_, "SELECT usuario, nombre, rol, debe_cambiar FROM usuarios WHERE usuario = ?");
+    s.texto(1, usuario);
+    if (!s.paso()) return std::nullopt;
 
+    std::string rol = s.texto_columna(2);
+    if (!rol_valido(rol)) rol = "admin";
+    return Usuario{s.texto_columna(0), s.texto_columna(1), rol, s.entero_columna(3) != 0};
+}
+
+std::size_t BaseDatosUsuarios::cantidad_usuarios() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Sentencia s(db_, "SELECT COUNT(*) FROM usuarios");
+    s.paso();
+    return static_cast<std::size_t>(s.entero_columna(0));
+}
+
+nlohmann::json BaseDatosUsuarios::listar_usuarios() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Sentencia s(db_,
+                "SELECT usuario, nombre, rol, correo, creado, debe_cambiar FROM usuarios "
+                "ORDER BY nombre COLLATE NOCASE, usuario COLLATE NOCASE");
+    nlohmann::json salida = nlohmann::json::array();
+    while (s.paso()) {
+        std::string rol = s.texto_columna(2);
+        if (!rol_valido(rol)) rol = "admin";
+        salida.push_back({{"usuario", s.texto_columna(0)}, {"nombre", s.texto_columna(1)}, {"rol", rol},
+                          {"correo", s.texto_columna(3)}, {"creado", s.texto_columna(4)},
+                          {"debe_cambiar", s.entero_columna(5) != 0}});
+    }
+    return salida;
+}
+
+std::string BaseDatosUsuarios::crear_usuario(const std::string& usuario, const std::string& nombre,
+                                             const std::string& rol, const std::string& correo) {
+    validar_usuario_nuevo(usuario, nombre, rol);
+
+    std::lock_guard<std::mutex> lock(mutex_);
     Transaccion tx(db_);
+    Sentencia existe(db_, "SELECT 1 FROM usuarios WHERE usuario = ?");
+    existe.texto(1, usuario);
+    if (existe.paso()) throw ErrorCuenta(409, "Ya existe un usuario con ese nombre.");
+
+    const std::string clave = insertar_usuario(db_, usuario, nombre, rol, correo);
+    tx.confirmar();
+    return clave;
+}
+
+void BaseDatosUsuarios::cambiar_rol(const std::string& usuario, const std::string& rol, const std::string& quien) {
+    if (!rol_valido(rol)) throw ErrorCuenta(400, "Rol no válido.");
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    Transaccion tx(db_);
+    Sentencia actual(db_, "SELECT rol FROM usuarios WHERE usuario = ?");
+    actual.texto(1, usuario);
+    if (!actual.paso()) throw ErrorCuenta(404, "No existe ese usuario.");
+
+    const std::string rol_actual = actual.texto_columna(0);
+    if (usuario == quien) throw ErrorCuenta(400, "No puede cambiar su propio rol.");
+    if (rol_actual == "admin" && rol != "admin" && contar_admins(db_) <= 1)
+        throw ErrorCuenta(400, "Debe quedar al menos un administrador.");
+
+    Sentencia s(db_, "UPDATE usuarios SET rol = ? WHERE usuario = ?");
+    s.texto(1, rol);
+    s.texto(2, usuario);
+    s.ejecutar();
+    tx.confirmar();
+}
+
+void BaseDatosUsuarios::eliminar(const std::string& usuario, const std::string& quien) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Transaccion tx(db_);
+    Sentencia actual(db_, "SELECT rol FROM usuarios WHERE usuario = ?");
+    actual.texto(1, usuario);
+    if (!actual.paso()) throw ErrorCuenta(404, "No existe ese usuario.");
+
+    if (usuario == quien) throw ErrorCuenta(400, "No puede eliminar su propia cuenta.");
+    if (actual.texto_columna(0) == "admin" && contar_admins(db_) <= 1)
+        throw ErrorCuenta(400, "Debe quedar al menos un administrador.");
+
+    Sentencia s(db_, "DELETE FROM usuarios WHERE usuario = ?");
+    s.texto(1, usuario);
+    s.ejecutar();
+    tx.confirmar();
+}
+
+std::string BaseDatosUsuarios::restablecer(const std::string& usuario) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Transaccion tx(db_);
+    Sentencia existe(db_, "SELECT 1 FROM usuarios WHERE usuario = ?");
+    existe.texto(1, usuario);
+    if (!existe.paso()) throw ErrorCuenta(404, "No existe ese usuario.");
+
+    const std::string clave = cripto::clave_temporal();
+    Sentencia s(db_, "UPDATE usuarios SET hash = ?, debe_cambiar = 1 WHERE usuario = ?");
+    s.texto(1, cripto::cifrar_clave(clave));
+    s.texto(2, usuario);
+    s.ejecutar();
+    tx.confirmar();
+    return clave;
+}
+
+void BaseDatosUsuarios::cambiar_clave(const std::string& usuario, const std::string& actual,
+                                      const std::string& nueva) {
+    if (nueva.size() < MIN_CLAVE)
+        throw ErrorCuenta(400, "La contraseña nueva debe tener al menos 10 caracteres.");
+    if (nueva.size() > 200) throw ErrorCuenta(400, "La contraseña nueva es demasiado larga.");
+    if (nueva == actual) throw ErrorCuenta(400, "La contraseña nueva debe ser distinta de la actual.");
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    Transaccion tx(db_);
+    Sentencia q(db_, "SELECT hash FROM usuarios WHERE usuario = ?");
+    q.texto(1, usuario);
+    if (!q.paso()) throw ErrorCuenta(404, "No existe ese usuario.");
+    if (!cripto::verificar_clave(actual, q.texto_columna(0)))
+        throw ErrorCuenta(400, "La contraseña actual no es correcta.");
+
+    Sentencia s(db_, "UPDATE usuarios SET hash = ?, debe_cambiar = 0 WHERE usuario = ?");
+    s.texto(1, cripto::cifrar_clave(nueva));
+    s.texto(2, usuario);
+    s.ejecutar();
+    tx.confirmar();
+}
+
+// --- Solicitudes ------------------------------------------------------------------------------------------------
+void BaseDatosUsuarios::crear_solicitud(const nlohmann::json& d) {
+    const std::string nombre = limpio(d, "nombre", 80), correo = limpio(d, "correo", 120),
+                      organizacion = limpio(d, "organizacion", 120), tipo = limpio(d, "tipo", 20),
+                      motivo = limpio(d, "motivo", 1500);
+    if (nombre.size() < 3) throw ErrorCuenta(400, "Escriba su nombre completo.");
+    if (!std::regex_match(correo, std::regex(R"(^[^@\s]+@[^@\s]+\.[^@\s]{2,}$)")))
+        throw ErrorCuenta(400, "Escriba un correo válido.");
+    if (!TIPOS_SOLICITUD.count(tipo)) throw ErrorCuenta(400, "Elija qué tipo de acceso necesita.");
+    if (motivo.size() < 30)
+        throw ErrorCuenta(400, "Cuéntenos un poco más por qué necesita el acceso (al menos 30 caracteres).");
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    Transaccion tx(db_);
+    Sentencia repetida(db_, "SELECT 1 FROM solicitudes WHERE estado = 'pendiente' AND correo = ?");
+    repetida.texto(1, correo);
+    if (repetida.paso())
+        throw ErrorCuenta(409, "Ya hay una solicitud pendiente con ese correo. El equipo la revisará pronto.");
+
+    Sentencia pendientes(db_, "SELECT COUNT(*) FROM solicitudes WHERE estado = 'pendiente'");
+    pendientes.paso();
+    if (static_cast<std::size_t>(pendientes.entero_columna(0)) >= MAX_PENDIENTES)
+        throw ErrorCuenta(503, "Hay demasiadas solicitudes pendientes. Intente más tarde.");
 
     Sentencia s(db_,
-                "UPDATE usuarios SET nombre_completo = ?, correo = ?, organizacion = ?, comentario = ?, "
-                "cargo = ?, telefono = ?, ciudad = ?, departamento = ?, pais = ?, rol = ?, estado = ?, "
-                "fecha_actualizacion = datetime('now') WHERE id = ?");
-    s.texto(1, usuario.nombre_completo);
-    s.texto(2, usuario.correo);
-    s.texto(3, usuario.organizacion);
-    s.texto(4, usuario.comentario);
-    s.texto(5, usuario.cargo);
-    s.texto(6, usuario.telefono);
-    s.texto(7, usuario.ciudad);
-    s.texto(8, usuario.departamento);
-    s.texto(9, usuario.pais);
-    s.texto(10, usuario.rol);
-    s.texto(11, usuario.estado);
-    s.entero(12, id);
+                "INSERT INTO solicitudes (id, fecha, nombre, correo, organizacion, tipo, motivo, estado) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')");
+    s.texto(1, cripto::hex(cripto::aleatorio(8)));
+    s.texto(2, fecha_iso());
+    s.texto(3, nombre);
+    s.texto(4, correo);
+    s.texto(5, organizacion);
+    s.texto(6, tipo);
+    s.texto(7, motivo);
     s.ejecutar();
+    tx.confirmar();
+}
 
-    if (sqlite3_changes(db_) == 0) throw std::runtime_error("No existe un usuario con ese id.");
+nlohmann::json BaseDatosUsuarios::listar_solicitudes() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Sentencia s(db_,
+                "SELECT id, fecha, nombre, correo, organizacion, tipo, motivo, estado, usuario_creado, "
+                "rol_asignado, resuelta_por, resuelta_fecha, resuelta_nota FROM solicitudes "
+                "ORDER BY fecha DESC, rowid DESC");
+    nlohmann::json salida = nlohmann::json::array();
+    while (s.paso()) {
+        nlohmann::json solicitud = {{"id", s.texto_columna(0)},       {"fecha", s.texto_columna(1)},
+                                    {"nombre", s.texto_columna(2)},   {"correo", s.texto_columna(3)},
+                                    {"organizacion", s.texto_columna(4)}, {"tipo", s.texto_columna(5)},
+                                    {"motivo", s.texto_columna(6)},   {"estado", s.texto_columna(7)}};
+        if (!s.nula_columna(8)) solicitud["usuario_creado"] = s.texto_columna(8);
+        if (!s.nula_columna(9)) solicitud["rol_asignado"] = s.texto_columna(9);
+        if (!s.nula_columna(10))
+            solicitud["resuelta"] = {{"por", s.texto_columna(10)},
+                                     {"fecha", s.texto_columna(11)},
+                                     {"nota", s.texto_columna(12)}};
+        salida.push_back(std::move(solicitud));
+    }
+    return salida;
+}
 
-    if (credencial) {
-        exigir(credencial->username, "username");
+nlohmann::json BaseDatosUsuarios::resolver(const std::string& id, bool aprobar, const std::string& rol,
+                                           const std::string& usuario, const std::string& nota,
+                                           const std::string& quien) {
+    if (nota.size() > 500) throw ErrorCuenta(400, "La nota es demasiado larga.");
 
-        if (credencial->password.empty()) {
-            Sentencia sc(db_,
-                         "UPDATE credenciales SET username = ?, activo = ?, fecha_actualizacion = datetime('now') "
-                         "WHERE usuario_id = ?");
-            sc.texto(1, credencial->username);
-            sc.entero(2, credencial->activo ? 1 : 0);
-            sc.entero(3, id);
-            sc.ejecutar();
-        } else {
-            Sentencia sc(db_,
-                         "UPDATE credenciales SET username = ?, password = ?, activo = ?, "
-                         "fecha_actualizacion = datetime('now') WHERE usuario_id = ?");
-            sc.texto(1, credencial->username);
-            sc.texto(2, proteger_password(credencial->password));
-            sc.entero(3, credencial->activo ? 1 : 0);
-            sc.entero(4, id);
-            sc.ejecutar();
-        }
+    std::lock_guard<std::mutex> lock(mutex_);
+    Transaccion tx(db_);
+    Sentencia consulta(db_, "SELECT nombre, correo, estado FROM solicitudes WHERE id = ?");
+    consulta.texto(1, id);
+    if (!consulta.paso()) throw ErrorCuenta(404, "No existe esa solicitud.");
+    if (consulta.texto_columna(2) != "pendiente")
+        throw ErrorCuenta(409, "Esa solicitud ya fue resuelta.");
 
-        if (sqlite3_changes(db_) == 0) insertar_credencial(db_, id, *credencial);
+    nlohmann::json salida = nlohmann::json::object();
+    if (aprobar) {
+        if (rol != "colaborador" && rol != "descarga")
+            throw ErrorCuenta(400, "Elija el rol: colaborador o descarga.");
+        if (!usuario_valido(usuario))
+            throw ErrorCuenta(400, "El usuario debe tener de 3 a 32 caracteres: letras minúsculas, números, punto o guion.");
+        Sentencia existe(db_, "SELECT 1 FROM usuarios WHERE usuario = ?");
+        existe.texto(1, usuario);
+        if (existe.paso()) throw ErrorCuenta(409, "Ya existe un usuario con ese nombre.");
+
+        const std::string clave = insertar_usuario(db_, usuario, consulta.texto_columna(0), rol,
+                                                   consulta.texto_columna(1));
+        salida = {{"usuario", usuario}, {"clave_temporal", clave}, {"rol", rol}};
+
+        Sentencia s(db_,
+                    "UPDATE solicitudes SET estado = 'aprobada', usuario_creado = ?, rol_asignado = ?, "
+                    "resuelta_por = ?, resuelta_fecha = ?, resuelta_nota = ? WHERE id = ?");
+        s.texto(1, usuario);
+        s.texto(2, rol);
+        s.texto(3, quien);
+        s.texto(4, fecha_iso());
+        s.texto(5, nota);
+        s.texto(6, id);
+        s.ejecutar();
+    } else {
+        Sentencia s(db_,
+                    "UPDATE solicitudes SET estado = 'rechazada', resuelta_por = ?, resuelta_fecha = ?, "
+                    "resuelta_nota = ? WHERE id = ?");
+        s.texto(1, quien);
+        s.texto(2, fecha_iso());
+        s.texto(3, nota);
+        s.texto(4, id);
+        s.ejecutar();
     }
 
     tx.confirmar();
-}
-
-void BaseDatosUsuarios::eliminar_usuario(std::int64_t id) {
-    if (id <= 0) throw std::runtime_error("El id del usuario no es valido.");
-
-    Transaccion tx(db_);
-    Sentencia s(db_, "DELETE FROM usuarios WHERE id = ?");
-    s.entero(1, id);
-    s.ejecutar();
-
-    if (sqlite3_changes(db_) == 0) throw std::runtime_error("No existe un usuario con ese id.");
-    tx.confirmar();
+    return salida;
 }
